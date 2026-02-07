@@ -37,14 +37,13 @@
 
 # def test_great_expectations_engine(sample_dataframe, great_expectations_config):
 #     engine = GreatexpectationsEngine(great_expectations_config)
-    
+
 #     summarymetrics = engine.apply(sample_dataframe, repository = None)
-    
+
 #     overallsuccess = True
 #     for metric in summarymetrics:
 #         if not(metric['success']):
 #             print("metric error: " + json.dumps(metric))
 #             overallsuccess = False
-    
-#     assert overallsuccess == True , "Atleast one expectation failed."
 
+#     assert overallsuccess == True , "Atleast one expectation failed."

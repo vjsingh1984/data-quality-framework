@@ -93,6 +93,10 @@ spark-warehouse/
 metastore_db/
 derby.log
 
+# Claude Code
+.claude/
+CLAUDE.md
+
 # Project specific
 *.jar
 bandit-report.json

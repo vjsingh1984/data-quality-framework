@@ -4,10 +4,9 @@
 """Factory for creating catalog provider instances."""
 import logging
 
-from dq.catalog.base import CatalogProvider
+from dq.catalog.glue_catalog import GlueCatalogProvider
 from dq.catalog.spark_catalog import SparkCatalogProvider
 from dq.catalog.unity_catalog import UnityCatalogProvider
-from dq.catalog.glue_catalog import GlueCatalogProvider
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +82,11 @@ class CatalogFactory:
            or "UnityCatalog", return "unity".
         2. If ``spark.hadoop.hive.metastore.client.factory.class`` contains
            "AWSGlue", return "glue".
-        3. Otherwise, return "spark" (default).
+        3. If ``spark.sql.catalog.spark_catalog`` contains "BigLakeCatalog",
+           return "spark" (Dataproc BigLake uses Spark catalog interface).
+        4. If ``spark.sql.catalog.spark_catalog`` contains "OneLakeCatalog",
+           return "spark" (Fabric OneLake uses Spark catalog interface).
+        5. Otherwise, return "spark" (default).
 
         Args:
             spark_session: Active SparkSession.
@@ -95,9 +98,7 @@ class CatalogFactory:
             conf = spark_session.sparkContext.getConf()
 
             # Check for Unity Catalog / Delta Catalog
-            spark_catalog = conf.get(
-                "spark.sql.catalog.spark_catalog", ""
-            )
+            spark_catalog = conf.get("spark.sql.catalog.spark_catalog", "")
             if "DeltaCatalog" in spark_catalog or "UnityCatalog" in spark_catalog:
                 logger.info("Auto-detected Unity Catalog from SparkSession config")
                 return "unity"
@@ -109,6 +110,14 @@ class CatalogFactory:
             if "AWSGlue" in metastore_class:
                 logger.info("Auto-detected Glue Catalog from SparkSession config")
                 return "glue"
+
+            # Dataproc BigLake and Fabric OneLake use Spark catalog interface
+            if "BigLakeCatalog" in spark_catalog:
+                logger.info("Auto-detected Dataproc BigLake from SparkSession config")
+                return "spark"
+            if "OneLakeCatalog" in spark_catalog:
+                logger.info("Auto-detected Fabric OneLake from SparkSession config")
+                return "spark"
 
         except Exception as e:
             logger.debug("Could not auto-detect catalog type: %s", e)

@@ -172,7 +172,7 @@ Place your engine in `dq/engine/mycustom/mycustom_engine.py` and reference it in
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.11+
 - Apache Spark 3.5+ (for Spark-based engines)
 - Deequ JAR file (for Deequ engine): `lib/deequ-2.0.7-spark-3.5.jar`
 

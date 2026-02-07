@@ -8,6 +8,7 @@ on:
 
 jobs:
   lint:
+    name: Lint & Format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,18 +19,39 @@ jobs:
         run: pip install poetry
       - name: Install dependencies
         run: poetry install --with dev
-      - name: Check formatting
+      - name: Check formatting (black)
         run: poetry run black --check dq/
-      - name: Lint
-        run: poetry run flake8 dq/ --max-line-length 88 --extend-ignore E203,W503
-      - name: Security scan
+      - name: Lint (ruff)
+        run: poetry run ruff check dq/
+      - name: Security scan (bandit)
         run: poetry run bandit -r dq/ -x tests -s B101 -q
 
-  test:
+  unit-tests:
+    name: Unit Tests (no Spark)
+    needs: [lint]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Poetry
+        run: pip install poetry
+      - name: Install dependencies
+        run: poetry install --with dev
+      - name: Run unit tests
+        run: poetry run pytest -m "not spark" dq/tests/ -v --tb=short
+
+  spark-tests:
+    name: Spark Integration Tests
+    needs: [lint]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -48,14 +70,15 @@ jobs:
           mkdir -p lib
           wget -q -O lib/deequ-2.0.7-spark-3.5.jar \
             https://repo1.maven.org/maven2/com/amazon/deequ/deequ/2.0.7-spark-3.5/deequ-2.0.7-spark-3.5.jar
-      - name: Run tests
-        run: poetry run pytest dq/tests/ -v --tb=short
+      - name: Run Spark tests
+        run: poetry run pytest -m spark dq/tests/ -v --tb=short
         env:
           SPARK_VERSION: "3.5"
 
   build:
+    name: Build Package
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    needs: [unit-tests, spark-tests]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -2,16 +2,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
+from pydeequ.repository import ResultKey
+from pydeequ.verification import VerificationResult, VerificationSuite
 from pyhocon import ConfigTree
 from pyspark.sql import DataFrame
-from pydeequ.verification import VerificationSuite, VerificationResult
-from pydeequ.repository import FileSystemMetricsRepository, ResultKey
 
-from dq.engine.dq_engine import DQEngine
 from dq.engine.deequ.deequ_check import DeequCheck
-from dq.utils import repository_utils, constants
+from dq.engine.dq_engine import DQEngine
+from dq.utils import constants, repository_utils
 
 logger = logging.getLogger(__name__)
 
@@ -76,20 +76,26 @@ class DeequEngine(DQEngine):
         if repository:
             current_milli_time = ResultKey.current_milli_time()
             repository_utils.save_to_repository(
-                repository, successMetrics,
-                constants.DQ_REPOSITORY_METRICS, current_milli_time,
+                repository,
+                successMetrics,
+                constants.DQ_REPOSITORY_METRICS,
+                current_milli_time,
             )
             repository_utils.save_to_repository(
-                repository, checkVerifications,
-                constants.DQ_REPOSITORY_VERIFICATIONS, current_milli_time,
+                repository,
+                checkVerifications,
+                constants.DQ_REPOSITORY_VERIFICATIONS,
+                current_milli_time,
             )
 
         summarymetrics = []
         for check in checkVerifications.collect():
-            summarymetrics.append({
-                "check": check["check"],
-                "success": check["check_status"] == "Success",
-                "details": check,
-            })
+            summarymetrics.append(
+                {
+                    "check": check["check"],
+                    "success": check["check_status"] == "Success",
+                    "details": check,
+                }
+            )
 
         return summarymetrics

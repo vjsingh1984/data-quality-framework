@@ -2,27 +2,23 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Main orchestrator for the Data Quality Framework."""
-import logging
 import json
-import re
-from collections import defaultdict
-from urllib.parse import urlparse
+import logging
+from typing import Any, Dict, List, Optional
 
-from pyspark.sql import SparkSession
-from pyhocon import ConfigFactory
-from pydeequ.repository import ResultKey
-
-from dq.engine.engine_loader import EngineLoader
-from dq.utils import config_utils, constants
 from dq.catalog.catalog_factory import CatalogFactory
-from dq.exceptions import ConfigurationError, DataFrameNotFoundError
+from dq.config.config_loader import AutoConfigLoader, ConfigLoader
+from dq.engine.engine_loader import EngineLoader
+from dq.resolver import (
+    CatalogProviderResolver,
+    ChainedResolver,
+    ConfigDataFrameResolver,
+    DefaultDataFrameResolver,
+    SparkCatalogResolver,
+)
+from dq.utils import constants
 
 logger = logging.getLogger(__name__)
-
-# Pattern for valid Spark/Hive/Unity table identifiers
-_TABLE_NAME_PATTERN = re.compile(
-    r"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*){0,2}$"
-)
 
 
 class DQFramework:
@@ -34,100 +30,47 @@ class DQFramework:
         config: Configuration string (HOCON), or URI (file://, s3://, abfss://, http://).
         default_dataframe: Optional default DataFrame for rules that don't
             specify explicit dataframe references.
-
-    Configuration supports a ``catalog_type`` key to control how table
-    references are resolved:
-
-    - ``"spark"`` (default): Uses Spark's built-in catalog.
-    - ``"unity"``: Uses Databricks Unity Catalog (three-part names).
-    - ``"glue"``: Uses AWS Glue Data Catalog.
-    - ``"hive"``: Uses Hive metastore via Spark.
-
-    Example::
-
-        dqframework {
-          catalog_type = "unity"
-
-          dataframes {
-            orders = "main.sales.orders"
-            customers = "main.sales.customers"
-          }
-
-          dqrules = [...]
-        }
-
-    Or with explicit catalog components::
-
-        dqframework {
-          catalog_type = "glue"
-
-          dataframes {
-            orders {
-              database = "sales_db"
-              table = "orders"
-            }
-          }
-
-          dqrules = [...]
-        }
+        config_loader: Optional custom ConfigLoader. Defaults to AutoConfigLoader.
+        resolver: Optional custom DataFrameResolver. Built automatically if not provided.
+        engine_loader: Optional custom EngineLoader.
     """
 
-    def __init__(self, spark, config, default_dataframe=None):
+    def __init__(
+        self,
+        spark,
+        config,
+        default_dataframe=None,
+        *,
+        config_loader: Optional[ConfigLoader] = None,
+        resolver=None,
+        engine_loader=None,
+    ):
         self._spark = spark
-        self._config = self._load_config(config)
+        self._config_loader = config_loader or AutoConfigLoader()
+        self._config = self._config_loader.load(config)
         self.default_dataframe = default_dataframe
         self._catalog_type = self._config.get("dqframework.catalog_type", None)
         self._catalog_provider = CatalogFactory.get_provider(
             spark, catalog_type=self._catalog_type
         )
+        self._engine_loader = engine_loader or EngineLoader()
         self.dataframes = self._load_dataframes()
+        self._resolver = resolver or self._build_resolver()
 
-    def _load_config(self, config):
-        """Load HOCON configuration from various sources.
-
-        Args:
-            config: Config string or URI.
-
-        Returns:
-            Parsed ConfigTree.
-
-        Raises:
-            ConfigurationError: If config cannot be parsed.
-        """
-        parsed_url = urlparse(config)
-        try:
-            if parsed_url.scheme == '':
-                return ConfigFactory.parse_string(config)
-            elif parsed_url.scheme == 's3':
-                return ConfigFactory.parse_string(
-                    config_utils.load_from_s3(
-                        bucket=parsed_url.netloc, key=parsed_url.path
-                    )
-                )
-            elif parsed_url.scheme == 'abfss':
-                return ConfigFactory.parse_string(
-                    config_utils.load_from_adls(config)
-                )
-            elif parsed_url.scheme == 'file':
-                return ConfigFactory.parse_file(config.replace("file://", ""))
-            elif parsed_url.scheme in ['http', 'https']:
-                return ConfigFactory.parse_string(
-                    config_utils.load_from_uri(config)
-                )
-            else:
-                raise ConfigurationError(
-                    f"Unsupported config scheme: {parsed_url.scheme}"
-                )
-        except ConfigurationError:
-            raise
-        except Exception as e:
-            raise ConfigurationError(f"Failed to load configuration: {e}") from e
+    def _build_resolver(self) -> ChainedResolver:
+        """Build the default resolver chain."""
+        return ChainedResolver(
+            resolvers=[
+                DefaultDataFrameResolver(self.default_dataframe),
+                ConfigDataFrameResolver(self.dataframes),
+                SparkCatalogResolver(self._spark),
+                CatalogProviderResolver(self._catalog_provider, self._catalog_type),
+            ],
+            catalog_type=self._catalog_type,
+        )
 
     def _load_dataframes(self):
         """Load DataFrames from configuration.
-
-        Supports both simple string references (table names) and
-        structured references with catalog/database/table components.
 
         Returns:
             Dict mapping logical names to DataFrames.
@@ -137,37 +80,22 @@ class DQFramework:
 
         for df_name, table_ref in config_dataframes.items():
             try:
-                df = self._resolve_dataframe(df_name, table_ref)
+                df = self._resolve_config_dataframe(df_name, table_ref)
                 if df is not None:
                     dataframes[df_name] = df
             except Exception as e:
-                logger.warning(
-                    "Could not load DataFrame '%s': %s", df_name, e
-                )
+                logger.warning("Could not load DataFrame '%s': %s", df_name, e)
 
         if self.default_dataframe is not None and "default" not in dataframes:
             dataframes["default"] = self.default_dataframe
 
         return dataframes
 
-    def _resolve_dataframe(self, df_name, table_ref):
-        """Resolve a DataFrame reference using the configured catalog.
-
-        Handles both string references ("catalog.schema.table") and
-        structured config references with database/table/catalog keys.
-
-        Args:
-            df_name: Logical name for the DataFrame.
-            table_ref: String table name or ConfigTree with components.
-
-        Returns:
-            Spark DataFrame or None.
-        """
+    def _resolve_config_dataframe(self, df_name, table_ref):
+        """Resolve a DataFrame reference from configuration."""
         if isinstance(table_ref, str):
-            # Simple string reference: could be "table", "db.table", or "catalog.db.table"
             return self._catalog_provider.get_dataframe(table_ref)
-        elif hasattr(table_ref, 'get'):
-            # Structured reference with explicit components
+        elif hasattr(table_ref, "get"):
             table = table_ref.get("table", df_name)
             database = table_ref.get("database", None)
             catalog = table_ref.get("catalog", None)
@@ -175,10 +103,9 @@ class DQFramework:
                 table, database=database, catalog=catalog
             )
         else:
-            # Fallback: treat as string
             return self._catalog_provider.get_dataframe(str(table_ref))
 
-    def run(self):
+    def run(self) -> List[Dict[str, Any]]:
         """Execute all configured data quality rules.
 
         Returns:
@@ -189,30 +116,31 @@ class DQFramework:
                 - ``ts``: Timestamp in milliseconds
                 - ``jobid``: Spark application ID
         """
+        from pydeequ.repository import ResultKey
+
         current_time_in_millis = ResultKey.current_milli_time()
         cumulative_metrics = []
 
         for rule_config in self._config.get("dqframework.dqrules", []):
-            df_names = rule_config.get('dataframes', ["default"])
+            df_names = rule_config.get("dataframes", ["default"])
             engine_name = rule_config.get(constants.DQ_ENGINE_NAME, None)
 
             if engine_name is None:
                 logger.warning("Rule missing 'engine' key, skipping: %s", rule_config)
                 continue
 
-            engine = EngineLoader().load_engine(
+            engine = self._engine_loader.load_engine(
                 engine_name, rule_config, current_time_in_millis
             )
 
             for df_name in df_names:
                 dataframe = self.get_dataframe(df_name)
                 summary_metrics = engine.apply(
-                    dataframe,
-                    repository=self._config.get("dqframework.repository", {})
+                    dataframe, repository=self._config.get("dqframework.repository", {})
                 )
                 for metric in summary_metrics:
-                    metric['ts'] = current_time_in_millis
-                    metric['jobid'] = self._spark.sparkContext.applicationId
+                    metric["ts"] = current_time_in_millis
+                    metric["jobid"] = self._spark.sparkContext.applicationId
                     if constants.DQ_METRICS_RESULT_SUCCESS_KEY in metric:
                         if not metric[constants.DQ_METRICS_RESULT_SUCCESS_KEY]:
                             logger.warning("Check failed: %s", json.dumps(metric))
@@ -223,7 +151,7 @@ class DQFramework:
     def get_dataframe(self, df_name):
         """Retrieve a DataFrame by logical name.
 
-        Checks in order:
+        Uses the configured resolver chain. Checks in order:
         1. Default DataFrame (if df_name is "default")
         2. Pre-loaded DataFrames from config
         3. Spark catalog (temp views / tables)
@@ -238,36 +166,4 @@ class DQFramework:
         Raises:
             DataFrameNotFoundError: If DataFrame cannot be found.
         """
-        if df_name == "default" and self.default_dataframe is not None:
-            return self.default_dataframe
-        elif df_name in self.dataframes:
-            return self.dataframes[df_name]
-        elif df_name in [t.name for t in self._spark.catalog.listTables()]:
-            if not _TABLE_NAME_PATTERN.match(df_name):
-                raise DataFrameNotFoundError(
-                    f"Invalid table name format: '{df_name}'"
-                )
-            return self._spark.table(df_name)
-        else:
-            # Try the catalog provider as last resort
-            try:
-                return self._catalog_provider.get_dataframe(df_name)
-            except Exception:
-                raise DataFrameNotFoundError(
-                    f"DataFrame '{df_name}' not found in config, Spark catalog, "
-                    f"or {self._catalog_type or 'default'} catalog."
-                )
-
-    def pivot_configuration(self, config):
-        """Pivot configuration so all engines and their checks are grouped.
-
-        Args:
-            config: Configuration object with rules attribute.
-
-        Returns:
-            Dict mapping engine names to lists of checks.
-        """
-        engine_check_map = defaultdict(list)
-        for rule in config.rules:
-            engine_check_map[rule.engine].extend(rule.checks)
-        return engine_check_map
+        return self._resolver.resolve(df_name)

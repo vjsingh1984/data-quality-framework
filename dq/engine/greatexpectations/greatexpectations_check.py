@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+
 from pyhocon import ConfigTree
+
 from dq.utils import config_utils
 
 logger = logging.getLogger(__name__)
@@ -34,7 +36,9 @@ class GreatexpectationsCheck:
             if expectation_method:
                 logger.debug(
                     "Applying %s on column %s with args: %s",
-                    expectation_type, column, kwargs,
+                    expectation_type,
+                    column,
+                    kwargs,
                 )
                 expectation_method(column, **kwargs)
             else:

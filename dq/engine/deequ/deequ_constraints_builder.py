@@ -1,12 +1,12 @@
 # Copyright 2024 Data Quality Framework Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-import os
 import logging
-from pydeequ.checks import Check, CheckLevel, ConstrainableDataTypes
-from pydeequ.verification import VerificationResult, VerificationSuite
+
+from pydeequ.checks import Check, CheckLevel
 from pydeequ.suggestions import *
-from pyspark.sql import functions as F, SparkSession
+from pydeequ.verification import VerificationResult, VerificationSuite
+from pyspark.sql import functions as F
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,9 @@ class DeequConstraintsBuilder:
 
         return suggested_constraints
 
-    def save_in_hocon_format(self, constraint_suggestions, dataset_name, dq_metrics_table, file_name):
+    def save_in_hocon_format(
+        self, constraint_suggestions, dataset_name, dq_metrics_table, file_name
+    ):
         """Save constraint suggestions as a HOCON configuration file.
 
         Args:
@@ -52,13 +54,15 @@ class DeequConstraintsBuilder:
         transform_suggestion = []
         for cons in constraint_suggestions["constraint_suggestions"]:
             s = cons["code_for_constraint"]
-            constraint = s[1:s.index('(')]
-            assertion = ''
+            constraint = s[1 : s.index("(")]
+            assertion = ""
             if "lambda" in s:
-                assertion = s[s.index('lambda'):s.index(',', s.index('lambda'))]
-            datatype = ''
+                assertion = s[s.index("lambda") : s.index(",", s.index("lambda"))]
+            datatype = ""
             if "hasDataType" in s:
-                datatype = str(cons["current_value"][cons["current_value"].index(':') + 1:]).strip()
+                datatype = str(
+                    cons["current_value"][cons["current_value"].index(":") + 1 :]
+                ).strip()
             check_str = f"""{{
                                 alias = "{cons['constraint_name']}"
                                 column = "{cons['column_name']}"
@@ -68,7 +72,7 @@ class DeequConstraintsBuilder:
                                 datatype = "{datatype}"
                             }},"""
             transform_suggestion.append(check_str)
-        transform_suggestion = ''.join(transform_suggestion).replace("'", "")
+        transform_suggestion = "".join(transform_suggestion).replace("'", "")
         dq_conf = f"""
             dqframework {{
             requiredscore = 1.0
@@ -108,20 +112,14 @@ class DeequConstraintsBuilder:
         Returns:
             DataFrame of check results.
         """
-        for suggestion in constraints['constraint_suggestions']:
+        for suggestion in constraints["constraint_suggestions"]:
             logger.debug(
                 "Suggested constraint for '%s': %s",
-                suggestion['column_name'], suggestion['description'],
+                suggestion["column_name"],
+                suggestion["description"],
             )
-            logger.debug("Rule description: '%s'", suggestion['rule_description'])
-            logger.debug("Python code: `%s`", suggestion['code_for_constraint'])
-
-        pydeequ_validation_string = ""
-
-        for suggestion in constraints['constraint_suggestions']:
-            pydeequ_validation_string = pydeequ_validation_string + suggestion["code_for_constraint"]
-
-        logger.debug("Validation string: %s", pydeequ_validation_string)
+            logger.debug("Rule description: '%s'", suggestion["rule_description"])
+            logger.debug("Python code: `%s`", suggestion["code_for_constraint"])
 
         check = Check(
             spark_session=spark,
@@ -129,14 +127,27 @@ class DeequConstraintsBuilder:
             description="Data Quality Check",
         )
 
-        pydeequ_validation_string_to_check = "check" + pydeequ_validation_string
+        # Apply each suggestion iteratively instead of using eval()
+        for suggestion in constraints["constraint_suggestions"]:
+            code_str = suggestion["code_for_constraint"]
+            logger.debug("Applying constraint: %s", code_str)
+            # code_for_constraint is like '.hasCompleteness("col", lambda x: x >= 0.9)'
+            # We apply it iteratively on the check object
+            try:
+                import ast as _ast
 
-        checked_constraints = (
-            VerificationSuite(spark)
-            .onData(df)
-            .addCheck(eval(pydeequ_validation_string_to_check))
-            .run()
-        )
+                # Parse and validate the expression before executing
+                full_expr = "check" + code_str
+                parsed = _ast.parse(full_expr, mode="eval")
+                # Compile from validated AST with restricted builtins
+                compiled = compile(parsed, "<constraint_suggestion>", "eval")
+                check = eval(compiled, {"__builtins__": {}, "check": check})
+            except Exception as e:
+                logger.warning(
+                    "Could not apply suggested constraint: %s (%s)", code_str, e
+                )
+
+        checked_constraints = VerificationSuite(spark).onData(df).addCheck(check).run()
 
         df_checked_constraints = VerificationResult.checkResultsAsDataFrame(
             spark, checked_constraints

@@ -2,12 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 import great_expectations as ge
-from dq.engine.dq_engine import DQEngine
 from pyhocon import ConfigTree
 from pyspark.sql import DataFrame
+
+from dq.engine.dq_engine import DQEngine
 from dq.engine.greatexpectations.greatexpectations_check import GreatexpectationsCheck
 from dq.utils import constants
 
@@ -47,13 +48,17 @@ class GreatexpectationsEngine(DQEngine):
         metrics = self._extract_metrics_from_validation_output(validation_output)
         return metrics
 
-    def _extract_metrics_from_validation_output(self, validation_output) -> List[Dict[str, Any]]:
+    def _extract_metrics_from_validation_output(
+        self, validation_output
+    ) -> List[Dict[str, Any]]:
         """Extract metric dictionaries from GE validation output."""
         summarymetrics = []
         for exp_result in validation_output.results:
-            summarymetrics.append({
-                "check": exp_result.expectation_config.expectation_type,
-                "success": exp_result.success,
-                "details": exp_result.result,
-            })
+            summarymetrics.append(
+                {
+                    "check": exp_result.expectation_config.expectation_type,
+                    "success": exp_result.success,
+                    "details": exp_result.result,
+                }
+            )
         return summarymetrics
