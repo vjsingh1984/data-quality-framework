@@ -1,0 +1,116 @@
+# Copyright 2024 Data Quality Framework Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+"""Validation utilities for Data Quality Framework."""
+import argparse
+import sys
+import json
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+
+def validate_config(config_path: str) -> bool:
+    """Validate a HOCON configuration file.
+
+    Args:
+        config_path: Path to the configuration file.
+
+    Returns:
+        True if configuration is valid, False otherwise.
+    """
+    try:
+        from pyhocon import ConfigFactory
+        from urllib.parse import urlparse
+
+        parsed = urlparse(config_path)
+
+        if parsed.scheme == "" or parsed.scheme == "file":
+            # Local file
+            file_path = config_path.replace("file://", "") if parsed.scheme == "file" else config_path
+            config = ConfigFactory.parse_file(file_path)
+        else:
+            # For s3://, http://, etc., we'd need additional handling
+            logger.warning(f"Remote config validation not fully supported for scheme: {parsed.scheme}")
+            return True
+
+        # Check required keys
+        if not config.get("dqframework"):
+            logger.error("Missing required key: 'dqframework'")
+            return False
+
+        dqrules = config.get("dqframework.dqrules", [])
+        if not dqrules:
+            logger.warning("No dqrules defined in configuration")
+
+        for i, rule in enumerate(dqrules):
+            if not rule.get("engine"):
+                logger.error(f"Rule {i}: Missing required key 'engine'")
+                return False
+            if not rule.get("checks"):
+                logger.warning(f"Rule {i}: No checks defined")
+
+        logger.info("Configuration is valid")
+        return True
+
+    except Exception as e:
+        logger.error(f"Configuration validation failed: {e}")
+        return False
+
+
+def main():
+    """Main entry point for dq-validate CLI."""
+    parser = argparse.ArgumentParser(
+        description="Validate Data Quality Framework configuration files",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  dq-validate config.conf
+  dq-validate file://path/to/config.conf
+  dq-validate --format json config.conf
+        """
+    )
+    parser.add_argument(
+        "config",
+        help="Path to HOCON configuration file to validate"
+    )
+    parser.add_argument(
+        "--format",
+        choices=["text", "json"],
+        default="text",
+        help="Output format (default: text)"
+    )
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Enable verbose output"
+    )
+
+    args = parser.parse_args()
+
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    is_valid = validate_config(args.config)
+
+    if args.format == "json":
+        result = {
+            "config": args.config,
+            "valid": is_valid
+        }
+        print(json.dumps(result, indent=2))
+    else:
+        if is_valid:
+            print(f"Configuration '{args.config}' is valid.")
+        else:
+            print(f"Configuration '{args.config}' is invalid.")
+
+    return 0 if is_valid else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
