@@ -16,7 +16,7 @@ TABLE_LEVEL_EXPECTATIONS = {
 }
 
 
-class GreatexpectationsCheck:
+class GreatExpectationsCheck:
     """Applies Great Expectations checks dynamically based on configuration.
 
     Uses reflection to call the appropriate GE expectation method based on

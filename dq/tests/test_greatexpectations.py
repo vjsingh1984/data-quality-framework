@@ -9,7 +9,7 @@ ge = pytest.importorskip("great_expectations")
 from pyhocon import ConfigFactory
 
 from dq.engine.greatexpectations.greatexpectations_engine import (
-    GreatexpectationsEngine,
+    GreatExpectationsEngine,
 )
 from dq.exceptions import ConfigurationError
 
@@ -53,7 +53,7 @@ class TestGENotNull:
             }
         """
         )
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         metrics = engine.apply(ge_dataframe)
         assert len(metrics) == 1
         assert metrics[0]["success"] is True
@@ -68,7 +68,7 @@ class TestGENotNull:
             }
         """
         )
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         metrics = engine.apply(ge_dataframe_dirty)
         assert len(metrics) == 1
         assert metrics[0]["success"] is False
@@ -85,7 +85,7 @@ class TestGEUnique:
             }
         """
         )
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         metrics = engine.apply(ge_dataframe)
         assert len(metrics) == 1
         assert metrics[0]["success"] is True
@@ -100,7 +100,7 @@ class TestGEUnique:
             }
         """
         )
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         metrics = engine.apply(ge_dataframe_dirty)
         assert len(metrics) == 1
         assert metrics[0]["success"] is False
@@ -121,7 +121,7 @@ class TestGEBetween:
             }
         """
         )
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         metrics = engine.apply(ge_dataframe)
         assert metrics[0]["success"] is True
 
@@ -139,7 +139,7 @@ class TestGEBetween:
             }
         """
         )
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         metrics = engine.apply(ge_dataframe_dirty)
         assert metrics[0]["success"] is False
 
@@ -155,7 +155,7 @@ class TestGEColumnExists:
             }
         """
         )
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         metrics = engine.apply(ge_dataframe)
         assert metrics[0]["success"] is True
 
@@ -169,7 +169,7 @@ class TestGEColumnExists:
             }
         """
         )
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         metrics = engine.apply(ge_dataframe)
         assert metrics[0]["success"] is False
 
@@ -189,7 +189,7 @@ class TestGERegex:
             }
         """
         )
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         metrics = engine.apply(ge_dataframe)
         assert metrics[0]["success"] is True
 
@@ -206,7 +206,7 @@ class TestGEMultiExpectation:
             }
         """
         )
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         metrics = engine.apply(ge_dataframe)
         assert len(metrics) == 2
         assert all(m["success"] for m in metrics)
@@ -222,7 +222,7 @@ class TestGEMultiExpectation:
             }
         """
         )
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         metrics = engine.apply(ge_dataframe_dirty)
         assert len(metrics) == 2
         assert any(not m["success"] for m in metrics)
@@ -239,7 +239,7 @@ class TestGEResultFormat:
             }
         """
         )
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         metrics = engine.apply(ge_dataframe)
         for m in metrics:
             assert "check" in m
@@ -252,4 +252,4 @@ class TestGEInvalidConfig:
     def test_ge_invalid_config_raises(self):
         config = _make_config('ge { name = "bad" }')
         with pytest.raises(ConfigurationError):
-            GreatexpectationsEngine(config)
+            GreatExpectationsEngine(config)

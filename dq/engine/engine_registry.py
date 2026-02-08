@@ -104,17 +104,30 @@ class EngineRegistry(GenericRegistry["DQEngine"]):
         """Try to import engine via convention: dq.engine.{name}.{name}_engine.
 
         The class name follows the convention: remove underscores, capitalize each word,
-        and append 'Engine'. For example:
+        and append 'Engine'. Handles compound words correctly (e.g., "schema_validation"
+        -> "SchemaValidationEngine", not "SchemaValidationEngine").
+
+        Examples:
         - "my_engine" -> "MyEngineEngine"
         - "schema_validation" -> "SchemaValidationEngine"
-        - "greatexpectations" -> "GreatexpectationsEngine"
+        - "great_expectations" -> "GreatExpectationsEngine"
 
         Validates that the discovered class is actually a DQEngine subclass
         and has the required 'apply' method.
         """
         module_path = f"dq.engine.{name}.{name}_engine"
-        # Proper class name: remove underscores, capitalize each word
-        class_name = "".join(word.capitalize() for word in name.split("_")) + "Engine"
+
+        # Handle compound words: split on underscore, capitalize each part
+        if "_" in name:
+            # "schema_validation" -> ["Schema", "Validation"] -> "SchemaValidationEngine"
+            class_name = "".join(word.capitalize() for word in name.split("_")) + "Engine"
+        else:
+            # Handle compound words without underscores using common patterns
+            # "schemavalidation" -> "SchemaValidationEngine"
+            # "greatexpectations" -> "GreatExpectationsEngine"
+            from dq.utils.string_utils import split_compound_word
+            words = split_compound_word(name)
+            class_name = "".join(word.capitalize() for word in words) + "Engine"
 
         try:
             module = importlib.import_module(module_path)

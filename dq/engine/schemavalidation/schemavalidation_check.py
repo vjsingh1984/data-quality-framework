@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from pyspark.sql import DataFrame
 
 
-class SchemavalidationCheck:
+class SchemaValidationCheck:
     """Builds PyDeequ checks from schema definitions.
 
     Validates datatype, nullable, unique, and foreign-key constraints

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from pyhocon import ConfigTree
 
 from dq.engine.dq_engine import DQEngine
-from dq.engine.schemavalidation.schemavalidation_check import SchemavalidationCheck
+from dq.engine.schemavalidation.schemavalidation_check import SchemaValidationCheck
 from dq.exceptions import ConfigurationError
 from dq.utils import constants, repository_utils
 
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class SchemavalidationEngine(DQEngine):
+class SchemaValidationEngine(DQEngine):
     """Engine that validates DataFrame schemas against expected definitions.
 
     Validates datatype, nullable, unique, and foreign-key constraints using:
@@ -34,7 +34,7 @@ class SchemavalidationEngine(DQEngine):
 
         # Native mode (no PyDeequ required)
         dqframework {
-            schemavalidation {
+            schema_validation {
                 backend = "native"
                 schema {
                     tables = [{
@@ -50,7 +50,7 @@ class SchemavalidationEngine(DQEngine):
 
         # Deequ mode (default, requires PyDeequ)
         dqframework {
-            schemavalidation {
+            schema_validation {
                 backend = "deequ"
                 # ... existing deequ config ...
             }
@@ -62,7 +62,7 @@ class SchemavalidationEngine(DQEngine):
         self._sparkSession = None
 
     def _validate_config(self) -> None:
-        """Validate SchemavalidationEngine configuration at init time."""
+        """Validate SchemaValidationEngine configuration at init time."""
         try:
             schema = self._config.get("schema")
         except Exception:
@@ -70,7 +70,7 @@ class SchemavalidationEngine(DQEngine):
 
         if not schema:
             raise ConfigurationError(
-                "SchemavalidationEngine requires 'schema' in configuration with "
+                "SchemaValidationEngine requires 'schema' in configuration with "
                 "table definitions including columns and constraints."
             )
 
@@ -154,7 +154,7 @@ class SchemavalidationEngine(DQEngine):
         from pydeequ.verification import VerificationResult, VerificationSuite
 
         single_check_mode = self._config.get(constants.DQ_SINGLE_CHECK_MODE, True)
-        schema_validation_check = SchemavalidationCheck(
+        schema_validation_check = SchemaValidationCheck(
             schema_config=self._config.get(constants.SCHEMA, {}),
             single_check_mode=single_check_mode,
         )

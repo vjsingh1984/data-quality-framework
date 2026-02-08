@@ -17,7 +17,7 @@ from pyspark.sql.types import (
     StructType,
 )
 
-from dq.engine.schemavalidation.schemavalidation_engine import SchemavalidationEngine
+from dq.engine.schemavalidation.schemavalidation_engine import SchemaValidationEngine
 
 
 @pytest.fixture
@@ -209,7 +209,7 @@ def single_schemavalidation_config():
 
 def process_schemavalidation_success(spark, df, config):
     # Initialize Schema Validation Engine with single_check_mode = False for granular reporting
-    schema_validation_engine = SchemavalidationEngine(config)
+    schema_validation_engine = SchemaValidationEngine(config)
     df.createOrReplaceTempView("temp_data_table")
     dfusers = spark.sql("select name, age from temp_data_table")
     dfusers.createOrReplaceTempView("temp_users")
@@ -236,7 +236,7 @@ def process_schemavalidation_success(spark, df, config):
 
 def process_schemavalidation_failure(spark, df, config):
     # Initialize Schema Validation Engine with single_check_mode = False for granular reporting
-    schema_validation_engine = SchemavalidationEngine(config)
+    schema_validation_engine = SchemaValidationEngine(config)
     df.createOrReplaceTempView("temp_data_table")
 
     dfusers = spark.sql("select name, age from temp_data_table limit 2")
@@ -318,7 +318,7 @@ def test_schemavalidation_float_type_success(spark):
     }
     """
     )
-    schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
+    schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:
@@ -435,7 +435,7 @@ def test_nullable_false_schemavalidation_single_check_success(spark):
     }}
     """
     )
-    schema_validation_engine = SchemavalidationEngine(not_null_constraint_config)
+    schema_validation_engine = SchemaValidationEngine(not_null_constraint_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:
@@ -472,7 +472,7 @@ def test_nullable_false_schemavalidation_single_check_failure(spark):
     """
     )
     print(str(not_null_constraint_config))
-    schema_validation_engine = SchemavalidationEngine(not_null_constraint_config)
+    schema_validation_engine = SchemaValidationEngine(not_null_constraint_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:

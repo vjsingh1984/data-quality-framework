@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from pyhocon import ConfigTree
 
 from dq.engine.dq_engine import DQEngine
-from dq.engine.greatexpectations.greatexpectations_check import GreatexpectationsCheck
+from dq.engine.greatexpectations.greatexpectations_check import GreatExpectationsCheck
 from dq.exceptions import ConfigurationError, EngineExecutionError
 from dq.utils import constants
 
@@ -36,7 +36,7 @@ TABLE_LEVEL_EXPECTATIONS = {
 }
 
 
-class GreatexpectationsEngine(DQEngine):
+class GreatExpectationsEngine(DQEngine):
     """Engine that validates DataFrames using Great Expectations.
 
     Wraps a GE ``SparkDFDataset`` and dynamically applies expectations
@@ -105,7 +105,7 @@ class GreatexpectationsEngine(DQEngine):
 
         # Accept 'checks' as alias for 'expectations'
         expectations = self._config.get("expectations", self._config.get("checks", []))
-        ge_checks = GreatexpectationsCheck(expectations)
+        ge_checks = GreatExpectationsCheck(expectations)
 
         try:
             ge_checks.apply_checks(ge_df)

@@ -12,7 +12,7 @@ from pyspark.sql.types import (
     StructType,
 )
 
-from dq.engine.schemavalidation.schemavalidation_engine import SchemavalidationEngine
+from dq.engine.schemavalidation.schemavalidation_engine import SchemaValidationEngine
 
 
 @pytest.fixture
@@ -127,7 +127,7 @@ def list_check_false_multiple_check_mode_schemavalidation_config():
 
 def process_schemavalidation_success(spark, df, config):
     # Initialize Schema Validation Engine with single_check_mode = False for granular reporting
-    schema_validation_engine = SchemavalidationEngine(config)
+    schema_validation_engine = SchemaValidationEngine(config)
     df.createOrReplaceTempView("temp_data_table")
     dfusers = spark.sql("select name, age from temp_data_table")
     dfusers.createOrReplaceTempView("temp_users")
@@ -146,7 +146,7 @@ def process_schemavalidation_success(spark, df, config):
 
 def process_schemavalidation_failure(spark, df, config):
     # Initialize Schema Validation Engine with single_check_mode = False for granular reporting
-    schema_validation_engine = SchemavalidationEngine(config)
+    schema_validation_engine = SchemaValidationEngine(config)
     df.createOrReplaceTempView("temp_data_table")
 
     dfusers = spark.sql("select name, age from temp_data_table limit 2")

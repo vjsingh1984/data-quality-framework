@@ -24,14 +24,14 @@ def apply_schema_validation(
         List of metric dictionaries.
     """
     from dq.engine.schemavalidation.schemavalidation_engine import (
-        SchemavalidationEngine,
+        SchemaValidationEngine,
     )
 
     # Create temp view with consistent name
     df.createOrReplaceTempView("temp_data_table")
 
     # Initialize and run schema validation engine
-    schema_validation_engine = SchemavalidationEngine(config)
+    schema_validation_engine = SchemaValidationEngine(config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     return summary_metrics
 

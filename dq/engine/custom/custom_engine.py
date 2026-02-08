@@ -28,7 +28,7 @@ class CustomEngine(DQEngine):
 
     * ``DistinctnessByGroup`` -- validates distinct counts within groups
     * ``RateOfChange`` -- detects sudden value changes between consecutive rows
-    * ``LookupBasedOnColumnNameList`` -- checks column names against a reference table
+    * ``LookupColumnList`` -- checks column names against a reference table
     * ``WideTablesNegativeValuesCheck`` -- finds negative values across wide tables
 
     External constraints can be added via
@@ -71,7 +71,7 @@ class CustomEngine(DQEngine):
         # Cache spark session for use in apply()
         self._spark_session = dataframe.sparkSession
 
-        # Pre-load and cache reference DataFrames for LookupBasedOnColumnNameList constraints
+        # Pre-load and cache reference DataFrames for LookupColumnList constraints
         self._cache_reference_dataframes(dataframe)
 
     def after_apply(self, dataframe: DataFrame, metrics: List[Dict[str, Any]]) -> None:
@@ -85,19 +85,19 @@ class CustomEngine(DQEngine):
         self._cache.clear()
 
     def _cache_reference_dataframes(self, dataframe: DataFrame) -> None:
-        """Pre-load and cache reference DataFrames for LookupBasedOnColumnNameList constraints."""
+        """Pre-load and cache reference DataFrames for LookupColumnList constraints."""
         checks = self._config.get("checks", [])
 
         for check_config in checks:
             constraint_name = check_config.get("constraint")
-            if constraint_name == "LookupBasedOnColumnNameList":
+            if constraint_name == "LookupColumnList":
                 ref_table = check_config.get("ref_table")
                 if ref_table and ref_table not in self._cache:
                     try:
                         ref_df = self._spark_session.table(ref_table)
                         self._cache[f"ref_{ref_table}"] = ref_df.cache()
                         logger.debug(
-                            "Cached reference table '%s' for LookupBasedOnColumnNameList",
+                            "Cached reference table '%s' for LookupColumnList",
                             ref_table,
                         )
                     except Exception as e:

@@ -14,7 +14,7 @@ from pyspark.sql.types import (
     StructType,
 )
 
-from dq.engine.schemavalidation.schemavalidation_engine import SchemavalidationEngine
+from dq.engine.schemavalidation.schemavalidation_engine import SchemaValidationEngine
 
 
 @pytest.mark.spark
@@ -49,7 +49,7 @@ def test_schemavalidation_single_check_mode_true_stringtype_with_yyyymmdd_withou
     """
     )
     # Apply Schema Validation including multi-column unique and foreign key constraints
-    schema_validation_engine = SchemavalidationEngine(schema_config)
+    schema_validation_engine = SchemaValidationEngine(schema_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:
@@ -100,7 +100,7 @@ def test_schemavalidation_single_check_mode_true_stringtype_with_yyyymmdd_with_o
     """
     )
     # Apply Schema Validation including multi-column unique and foreign key constraints
-    schema_validation_engine = SchemavalidationEngine(schema_config)
+    schema_validation_engine = SchemaValidationEngine(schema_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:
@@ -149,7 +149,7 @@ def test_schemavalidation_single_check_mode_true_stringtype_with_yyyymmdd_with_o
     """
     )
     # Apply Schema Validation including multi-column unique and foreign key constraints
-    schema_validation_engine = SchemavalidationEngine(schema_config)
+    schema_validation_engine = SchemaValidationEngine(schema_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:
@@ -185,7 +185,7 @@ def test_schemavalidation_single_check_mode_true_varchartype10_success(spark):
     }
     """
     )
-    schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
+    schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:
@@ -225,7 +225,7 @@ def test_schemavalidation_single_check_mode_true_shortType_success(spark):
     }
     """
     )
-    schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
+    schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:
@@ -262,7 +262,7 @@ def test_schemavalidation_single_check_mode_true_chartype10_success(spark):
     }
     """
     )
-    schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
+    schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:
@@ -303,7 +303,7 @@ def test_schemavalidation_single_check_mode_true_booleanType_success(spark):
     }
     """
     )
-    schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
+    schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:
@@ -346,7 +346,7 @@ def test_schemavalidation_single_check_mode_false_stringtype_with_yyyymmdd_witho
     """
     )
     # Apply Schema Validation including multi-column unique and foreign key constraints
-    schema_validation_engine = SchemavalidationEngine(schema_config)
+    schema_validation_engine = SchemaValidationEngine(schema_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:
@@ -396,7 +396,7 @@ def test_schemavalidation_single_check_mode_false_stringtype_with_yyyymmdd_with_
     """
     )
     # Apply Schema Validation including multi-column unique and foreign key constraints
-    schema_validation_engine = SchemavalidationEngine(schema_config)
+    schema_validation_engine = SchemaValidationEngine(schema_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:
@@ -445,7 +445,7 @@ def test_schemavalidation_single_check_mode_false_stringtype_with_yyyymmdd_with_
     """
     )
     # Apply Schema Validation including multi-column unique and foreign key constraints
-    schema_validation_engine = SchemavalidationEngine(schema_config)
+    schema_validation_engine = SchemaValidationEngine(schema_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:
@@ -481,7 +481,7 @@ def test_schemavalidation_single_check_mode_false_varchartype10_success(spark):
     }
     """
     )
-    schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
+    schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:
@@ -521,7 +521,7 @@ def test_schemavalidation_single_check_mode_false_shortType_success(spark):
     }
     """
     )
-    schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
+    schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:
@@ -558,7 +558,7 @@ def test_schemavalidation_single_check_mode_false_chartype10_success(spark):
     }
     """
     )
-    schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
+    schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:
@@ -599,7 +599,7 @@ def test_schemavalidation_single_check_mode_false_booleanType_success(spark):
     }
     """
     )
-    schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
+    schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
     for metric in summary_metrics:

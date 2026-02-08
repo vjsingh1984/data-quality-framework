@@ -12,7 +12,15 @@ _ENGINE_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 
 def _build_class_name(name: str) -> str:
     """Helper function that matches the new engine class name logic."""
-    return "".join(word.capitalize() for word in name.split("_")) + "Engine"
+    from dq.utils.string_utils import split_compound_word
+
+    if "_" in name:
+        # "schema_validation" -> ["Schema", "Validation"] -> "SchemaValidationEngine"
+        return "".join(word.capitalize() for word in name.split("_")) + "Engine"
+    else:
+        # "schemavalidation" -> ["schema", "validation"] -> "SchemaValidationEngine"
+        words = split_compound_word(name)
+        return "".join(word.capitalize() for word in words) + "Engine"
 
 
 class TestEngineNameValidation:
@@ -69,7 +77,7 @@ class TestModulePathConstruction:
     def test_class_name_multiword(self):
         name = "schemavalidation"
         class_name = f"{name.capitalize()}Engine"
-        # capitalize() only uppercases first letter
+        # capitalize() only uppercases first letter (old broken behavior)
         assert class_name == "SchemavalidationEngine"
 
     def test_class_name_with_underscore(self):
@@ -94,7 +102,7 @@ class TestModulePathConstruction:
 
 
 class TestImprovedClassNameConstruction:
-    """Tests for the improved class name construction logic (D5 fix)."""
+    """Tests for the improved class name construction logic with compound word support."""
 
     @pytest.mark.parametrize(
         "name,expected",
@@ -104,7 +112,9 @@ class TestImprovedClassNameConstruction:
             ("drules", "DrulesEngine"),
             ("my_engine", "MyEngineEngine"),
             ("schema_validation", "SchemaValidationEngine"),
-            ("greatexpectations", "GreatexpectationsEngine"),
+            ("great_expectations", "GreatExpectationsEngine"),
+            ("schemavalidation", "SchemaValidationEngine"),
+            ("greatexpectations", "GreatExpectationsEngine"),
             ("a", "AEngine"),
             ("multi_part_engine", "MultiPartEngineEngine"),
         ],
@@ -113,18 +123,34 @@ class TestImprovedClassNameConstruction:
         """Test that underscores are removed and each word is capitalized."""
         assert _build_class_name(name) == expected
 
+    def test_compound_word_splitting(self):
+        """Test compound word splitting without underscores."""
+        from dq.utils.string_utils import split_compound_word
+
+        # Test known compound words
+        assert split_compound_word("schemavalidation") == ["schema", "validation"]
+        assert split_compound_word("greatexpectations") == ["great", "expectations"]
+
+        # Test underscore splitting still works
+        assert split_compound_word("schema_validation") == ["schema", "validation"]
+        assert split_compound_word("great_expectations") == ["great", "expectations"]
+
+        # Test simple words pass through
+        assert split_compound_word("deequ") == ["deequ"]
+        assert split_compound_word("custom") == ["custom"]
+
     def test_old_capitalize_was_broken(self):
         """Demonstrate that the old capitalize() logic was broken."""
         # Old logic: f"{name.capitalize()}Engine"
         # "my_engine" -> "My_engineEngine" ❌
-        # "schema_validation" -> "SchemavalidationEngine" ❌
+        # "schemavalidation" -> "SchemavalidationEngine" ❌ (not proper PascalCase)
 
         assert "my_engine".capitalize() == "My_engine"
-        assert "schema_validation".capitalize() == "Schema_validation"
+        assert "schemavalidation".capitalize() == "Schemavalidation"
 
         # New logic handles this correctly - each word is capitalized
         assert _build_class_name("my_engine") == "MyEngineEngine"
-        assert _build_class_name("schema_validation") == "SchemaValidationEngine"
+        assert _build_class_name("schemavalidation") == "SchemaValidationEngine"
 
 
 class TestEngineDiscoveryValidation:

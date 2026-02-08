@@ -11,33 +11,33 @@ from dq.exceptions import ConfigurationError
 
 
 class TestGEConfigValidation:
-    """Test configuration validation in GreatexpectationsEngine."""
+    """Test configuration validation in GreatExpectationsEngine."""
 
     def _make_config(self, config_str):
         return ConfigFactory.parse_string(config_str).get("ge", {})
 
     def test_missing_expectations_key_raises(self):
         from dq.engine.greatexpectations.greatexpectations_engine import (
-            GreatexpectationsEngine,
+            GreatExpectationsEngine,
         )
 
         config = self._make_config('ge { name = "test" }')
         with pytest.raises(ConfigurationError, match="expectations"):
-            GreatexpectationsEngine(config)
+            GreatExpectationsEngine(config)
 
     def test_empty_expectations_list_ok(self):
         from dq.engine.greatexpectations.greatexpectations_engine import (
-            GreatexpectationsEngine,
+            GreatExpectationsEngine,
         )
 
         config = self._make_config("ge { expectations = [] }")
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         assert engine is not None
 
     def test_checks_alias_accepted(self):
         """'checks' key should work as alias for 'expectations'."""
         from dq.engine.greatexpectations.greatexpectations_engine import (
-            GreatexpectationsEngine,
+            GreatExpectationsEngine,
         )
 
         config = self._make_config(
@@ -49,12 +49,12 @@ class TestGEConfigValidation:
             }
         """
         )
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         assert engine is not None
 
     def test_missing_type_raises(self):
         from dq.engine.greatexpectations.greatexpectations_engine import (
-            GreatexpectationsEngine,
+            GreatExpectationsEngine,
         )
 
         config = self._make_config(
@@ -67,11 +67,11 @@ class TestGEConfigValidation:
         """
         )
         with pytest.raises(ConfigurationError, match="type"):
-            GreatexpectationsEngine(config)
+            GreatExpectationsEngine(config)
 
     def test_unknown_type_raises(self):
         from dq.engine.greatexpectations.greatexpectations_engine import (
-            GreatexpectationsEngine,
+            GreatExpectationsEngine,
         )
 
         config = self._make_config(
@@ -84,7 +84,7 @@ class TestGEConfigValidation:
         """
         )
         with pytest.raises(ConfigurationError, match="Unsupported"):
-            GreatexpectationsEngine(config)
+            GreatExpectationsEngine(config)
 
     @pytest.mark.parametrize(
         "exp_type",
@@ -101,7 +101,7 @@ class TestGEConfigValidation:
     )
     def test_valid_types_accepted(self, exp_type):
         from dq.engine.greatexpectations.greatexpectations_engine import (
-            GreatexpectationsEngine,
+            GreatExpectationsEngine,
         )
 
         # Table-level expectations don't need column
@@ -116,12 +116,12 @@ class TestGEConfigValidation:
             }}
         """
         )
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         assert engine is not None
 
     def test_column_required_for_column_level(self):
         from dq.engine.greatexpectations.greatexpectations_engine import (
-            GreatexpectationsEngine,
+            GreatExpectationsEngine,
         )
 
         config = self._make_config(
@@ -134,7 +134,7 @@ class TestGEConfigValidation:
         """
         )
         with pytest.raises(ConfigurationError, match="column"):
-            GreatexpectationsEngine(config)
+            GreatExpectationsEngine(config)
 
 
 class TestGEMetricExtraction:
@@ -142,10 +142,10 @@ class TestGEMetricExtraction:
 
     def _get_engine_class(self):
         from dq.engine.greatexpectations.greatexpectations_engine import (
-            GreatexpectationsEngine,
+            GreatExpectationsEngine,
         )
 
-        return GreatexpectationsEngine
+        return GreatExpectationsEngine
 
     def _make_mock_result(
         self, success, exp_type="expect_column_values_to_not_be_null", observed=None
@@ -204,15 +204,15 @@ class TestGEMetricExtraction:
 
 
 class TestGECheckUnit:
-    """Test GreatexpectationsCheck dispatches correctly."""
+    """Test GreatExpectationsCheck dispatches correctly."""
 
     def test_correct_method_called(self):
         from dq.engine.greatexpectations.greatexpectations_check import (
-            GreatexpectationsCheck,
+            GreatExpectationsCheck,
         )
 
         config = [{"type": "expect_column_values_to_not_be_null", "column": "name"}]
-        check = GreatexpectationsCheck(config)
+        check = GreatExpectationsCheck(config)
 
         ge_df = MagicMock()
         ge_df.expect_column_values_to_not_be_null = MagicMock()
@@ -221,7 +221,7 @@ class TestGECheckUnit:
 
     def test_kwargs_forwarded(self):
         from dq.engine.greatexpectations.greatexpectations_check import (
-            GreatexpectationsCheck,
+            GreatExpectationsCheck,
         )
 
         config = [
@@ -231,7 +231,7 @@ class TestGECheckUnit:
                 "kwargs": {"min_value": 0, "max_value": 120},
             }
         ]
-        check = GreatexpectationsCheck(config)
+        check = GreatExpectationsCheck(config)
 
         ge_df = MagicMock()
         ge_df.expect_column_values_to_be_between = MagicMock()
@@ -242,7 +242,7 @@ class TestGECheckUnit:
 
     def test_table_level_expectations_no_column(self):
         from dq.engine.greatexpectations.greatexpectations_check import (
-            GreatexpectationsCheck,
+            GreatExpectationsCheck,
         )
 
         config = [
@@ -251,7 +251,7 @@ class TestGECheckUnit:
                 "kwargs": {"min_value": 1, "max_value": 1000},
             }
         ]
-        check = GreatexpectationsCheck(config)
+        check = GreatExpectationsCheck(config)
 
         ge_df = MagicMock()
         ge_df.expect_table_row_count_to_be_between = MagicMock()
@@ -262,11 +262,11 @@ class TestGECheckUnit:
 
     def test_unknown_expectation_raises(self):
         from dq.engine.greatexpectations.greatexpectations_check import (
-            GreatexpectationsCheck,
+            GreatExpectationsCheck,
         )
 
         config = [{"type": "expect_nonsense_xyz", "column": "id"}]
-        check = GreatexpectationsCheck(config)
+        check = GreatExpectationsCheck(config)
 
         ge_df = MagicMock(spec=[])  # no attributes
         with pytest.raises(ConfigurationError, match="not found"):

@@ -10,10 +10,10 @@ from dq.engine.custom.custom_engine import CustomEngine
 from dq.engine.deequ.deequ_engine import DeequEngine
 from dq.engine.drules.drules_engine import DrulesEngine
 from dq.engine.greatexpectations.greatexpectations_engine import (
-    GreatexpectationsEngine,
+    GreatExpectationsEngine,
 )
 from dq.engine.schemavalidation.schemavalidation_engine import (
-    SchemavalidationEngine,
+    SchemaValidationEngine,
 )
 from dq.exceptions import ConfigurationError
 
@@ -126,14 +126,14 @@ class TestCustomEngineValidation:
         assert engine is not None
 
 
-class TestSchemavalidationEngineValidation:
-    """Tests for SchemavalidationEngine config validation."""
+class TestSchemaValidationEngineValidation:
+    """Tests for SchemaValidationEngine config validation."""
 
     def test_requires_schema_key(self):
-        """Test that SchemavalidationEngine requires 'schema' in config."""
+        """Test that SchemaValidationEngine requires 'schema' in config."""
         config = ConfigFactory.parse_string("{}")
         with pytest.raises(ConfigurationError, match="requires 'schema'"):
-            SchemavalidationEngine(config)
+            SchemaValidationEngine(config)
 
     def test_valid_config_passes(self):
         """Test that valid config passes validation."""
@@ -150,7 +150,7 @@ class TestSchemavalidationEngineValidation:
             """
         )
         # Should not raise
-        engine = SchemavalidationEngine(config)
+        engine = SchemaValidationEngine(config)
         assert engine is not None
 
 
@@ -210,7 +210,7 @@ class TestGreatExpectationsEngineValidation:
         with pytest.raises(
             ConfigurationError, match="requires 'expectations' \\(or 'checks'\\)"
         ):
-            GreatexpectationsEngine(config)
+            GreatExpectationsEngine(config)
 
     def test_expectations_must_have_type(self):
         """Test that each expectation must have 'type' key."""
@@ -225,7 +225,7 @@ class TestGreatExpectationsEngineValidation:
             """
         )
         with pytest.raises(ConfigurationError, match="missing required 'type'"):
-            GreatexpectationsEngine(config)
+            GreatExpectationsEngine(config)
 
     def test_unsupported_expectation_type_fails(self):
         """Test that unsupported expectation types raise an error."""
@@ -239,7 +239,7 @@ class TestGreatExpectationsEngineValidation:
             """
         )
         with pytest.raises(ConfigurationError, match="Unsupported expectation type"):
-            GreatexpectationsEngine(config)
+            GreatExpectationsEngine(config)
 
     def test_column_level_expectation_requires_column(self):
         """Test that column-level expectations require 'column' parameter."""
@@ -253,7 +253,7 @@ class TestGreatExpectationsEngineValidation:
             """
         )
         with pytest.raises(ConfigurationError, match="requires a 'column' parameter"):
-            GreatexpectationsEngine(config)
+            GreatExpectationsEngine(config)
 
     def test_checks_alias_works(self):
         """Test that 'checks' is accepted as alias for 'expectations'."""
@@ -267,7 +267,7 @@ class TestGreatExpectationsEngineValidation:
             """
         )
         # Should not raise
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         assert engine is not None
 
     def test_valid_config_passes(self):
@@ -282,7 +282,7 @@ class TestGreatExpectationsEngineValidation:
             """
         )
         # Should not raise
-        engine = GreatexpectationsEngine(config)
+        engine = GreatExpectationsEngine(config)
         assert engine is not None
 
 
