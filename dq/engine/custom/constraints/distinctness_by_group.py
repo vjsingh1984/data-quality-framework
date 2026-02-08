@@ -24,11 +24,11 @@ def _check_min_max_threshold(
     value,
     group_by,
     level,
-    max_val,
-    min_val,
+    max_value,
+    min_value,
 ):
     """Check value against min/max thresholds and append results."""
-    if min_val and value < min_val:
+    if min_value and value < min_value:
         metric_results.append(
             ["MultiColumn", f"{constraint} {group_by} for {col}", dq_dimension, 0]
         )
@@ -39,10 +39,10 @@ def _check_min_max_threshold(
                 "Error",
                 f"{constraint} {group_by} for {col}",
                 "Failure",
-                f"{value} is below the threshold - {min_val}",
+                f"{value} is below the threshold - {min_value}",
             ]
         )
-    elif max_val and value > max_val:
+    elif max_value and value > max_value:
         metric_results.append(
             ["MultiColumn", f"{constraint} {group_by} for {col}", dq_dimension, 0]
         )
@@ -53,7 +53,7 @@ def _check_min_max_threshold(
                 "Error",
                 f"{constraint} {group_by} for {col}",
                 "Failure",
-                f"{value} is above the threshold - {max_val}",
+                f"{value} is above the threshold - {max_value}",
             ]
         )
     else:
@@ -84,8 +84,8 @@ class DistinctnessByGroup(CustomConstraint):
         group_by = config.get("group_by", None)
         dq_dimension = config.get("dq_dimension", "Compliance")
         constraint = config.get("constraint", "DistinctnessByGroup")
-        min_val = config.get("min", None)
-        max_val = config.get("max", None)
+        min_value = config.get("min", None)
+        max_value = config.get("max", None)
         level = config.get("level", "Warning")
 
         logger.info(
@@ -113,8 +113,8 @@ class DistinctnessByGroup(CustomConstraint):
                     distinct_count,
                     group_by,
                     level,
-                    max_val,
-                    min_val,
+                    max_value,
+                    min_value,
                 )
 
         if len(metric_results) == 0:
