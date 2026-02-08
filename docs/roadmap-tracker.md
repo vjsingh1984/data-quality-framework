@@ -88,7 +88,6 @@
                               │   Remaining Issues      │
                               ├─────────────────────────┤
                               │ D3: Registry pattern    │
-                              │ D4: SchemaVal-Deequ     │
                               │ V1-V6: Vision items     │
                               └─────────────────────────┘
 ```
@@ -504,82 +503,107 @@ class RuleRegistry(GenericRegistry[DRule]):
 **ID**: D4
 **Priority**: Medium
 **Category**: Design
-**Status**: **OPEN**
+**Status**: ✅ **COMPLETED** (2026-02-07)
 
 #### Description
-`SchemaValidationEngine` was previously coupled to `DeequEngine`. While the inheritance was removed, the implementation still relies heavily on PyDeequ internals.
+`SchemaValidationEngine` was previously coupled to PyDeequ, requiring it even for basic schema validation. The implementation relied heavily on PyDeequ's Check and VerificationSuite APIs.
 
-#### Current State
+#### Implementation Details
+
+**Created engine-agnostic validation module:**
+
 ```python
-# In schemavalidation_check.py
-from pydeequ.checks import Check, CheckLevel
+# dq/validation/result.py
+@dataclass
+class ValidationResult:
+    """Result of a schema validation check (engine-agnostic)."""
+    check_name: str
+    constraint: str
+    success: bool
+    details: Dict[str, Any]
+    assertion: Optional[str] = None
 
-def _new_check(self, description="Schema Validation"):
-    return Check(
-        spark_session=self._spark_session,
-        level=CheckLevel.Error,
-        description=description,
-    )
+@dataclass
+class SchemaValidationSummary:
+    """Summary of schema validation results."""
+    results: List[ValidationResult]
+    @property
+    def total_checks(self) -> int
+    @property
+    def passed_checks(self) -> int
+    @property
+    def failed_checks(self) -> int
 ```
 
-#### Impact
-- Schema validation requires PyDeeven though it could be engine-agnostic
-- Can't use schema validation without De dependency
-- Tight coupling to Deequ's API changes
+**Created native Spark validator:**
 
-#### Recommended Solution
-
-1. **Extract validation logic to engine-agnostic layer**:
 ```python
 # dq/validation/schema_validator.py
-class SchemaValidator:
-    def __init__(self, spark_session, schema_config):
-        self._spark = spark_session
-        self._config = schema_config
+class NativeSchemaValidator:
+    """Schema validation using Spark native methods (no PyDeequ)."""
 
-    def validate_datatype(self, df: DataFrame, column: str, expected_type: str) -> ValidationResult:
-        """Engine-agnostic datatype validation using Spark native methods"""
-        actual_type = str(df.schema[column].dataType)
-
-        if self._types_match(actual_type, expected_type):
-            return ValidationResult(success=True, details={...})
-
-        # Use native Spark SQL for validation
-        mismatch_count = df.filter(
-            f"typeof({column}) != '{self._spark_type_to_sql(expected_type)}'"
-        ).count()
-
-        return ValidationResult(
-            success=mismatch_count == 0,
-            details={"mismatch_count": mismatch_count, "expected": expected_type, "actual": actual_type}
-        )
+    def validate(self, df: DataFrame) -> SchemaValidationSummary:
+        # Validate datatypes using df.schema
+        # Validate nullable using df.filter(col.isNull())
+        # Validate unique using df.count() vs df.distinct().count()
 ```
 
-2. **Create adapter pattern for engines**:
+**Updated SchemavalidationEngine with dual backend:**
+
 ```python
-class DeequSchemaAdapter:
-    def __init__(self, validator: SchemaValidator, check_level):
-        self._validator = validator
-        self._check_level = check_level
+class SchemavalidationEngine(DQEngine):
+    """Engine with native and Deequ backends."""
 
-    def add_to_check(self, deequ_check, constraint_name, column, **kwargs):
-        """Convert validation result to Deequ Check"""
-        result = self._validator.validate_datatype(...)
-        if not result.success:
-            return deequ_check.satisfies(...)
-        return deequ_check
+    def apply(self, dataframe, repository=None):
+        backend = self._config.get("backend", "deequ")
+
+        if backend == "native":
+            return self._run_native_validation(dataframe)
+        else:
+            return self._run_deequ_validation(dataframe, repository)
 ```
 
-#### Files to Modify
-- Create new: `dq/validation/__init__.py`, `dq/validation/schema_validator.py`
-- Create new: `dq/engine/schemavalidation/deequ_adapter.py`
-- Modify: `dq/engine/schemavalidation/schemavalidation_check.py`
+**Configuration:**
 
-#### Estimated Effort
-3-5 days
+```hocon
+# Native mode (no PyDeequ required)
+schemavalidation {
+    backend = "native"
+    schema {
+        tables = [{
+            name = "my_table"
+            columns = [
+                { name = "id", type = "int", nullable = false, unique = true }
+                { name = "name", type = "string" }
+            ]
+        }]
+    }
+}
+
+# Deequ mode (default, requires PyDeequ)
+schemavalidation {
+    backend = "deequ"
+    # ... existing config ...
+}
+```
+
+**Files Created:**
+- `dq/validation/__init__.py`
+- `dq/validation/result.py` - ValidationResult and SchemaValidationSummary
+- `dq/validation/schema_validator.py` - NativeSchemaValidator
+- `dq/tests/unit/test_native_validation_unit.py` - 9 tests
+
+**Files Modified:**
+- `dq/engine/schemavalidation/schemavalidation_engine.py` - Dual backend support
+
+#### Test Results
+All 182 unit tests pass (173 + 9 new)
+
+#### Commit
+`6de5338` - Implement D4: SchemaValidation-Deequ decoupling with native backend
 
 #### Dependencies
-- D2 (normalized output schema) should be done first
+- D2 (completed) - provided normalized metric schema
 
 ---
 
@@ -1269,6 +1293,7 @@ No native profiling capabilities. Users must manually:
 
 | Date | Change | Author |
 |------|--------|--------|
+| 2026-02-07 | Completed D4: SchemaValidation-Deequ Decoupling | Claude (Sonnet 4.5) |
 | 2026-02-07 | Completed D2: Return Type Variance | Claude (Sonnet 4.5) |
 | 2026-02-07 | Completed D6: Config Validation Split | Claude (Sonnet 4.5) |
 | 2026-02-07 | Completed D8: CatalogFactory Extensibility | Claude (Sonnet 4.5) |
