@@ -90,7 +90,6 @@
                               │ D2: Return type variance│
                               │ D3: Registry pattern    │
                               │ D4: SchemaVal-Deequ     │
-                              │ D6: Config validation   │
                               │ V1-V6: Vision items     │
                               └─────────────────────────┘
 ```
@@ -584,10 +583,10 @@ All 146 unit tests pass (135 original + 11 new)
 **ID**: D6
 **Priority**: Low
 **Category**: Design
-**Status**: **OPEN**
+**Status**: ✅ **COMPLETED** (2026-02-07)
 
 #### Description
-Some engines validate config at init time (`DrulesEngine`, `GreatExpectationsEngine`), while others don't validate until `apply()` is called. This leads to late-discovered configuration errors.
+Some engines validated config at init time (`DrulesEngine`, `GreatExpectationsEngine`), while others didn't validate until `apply()` was called. This led to late-discovered configuration errors.
 
 #### Current State
 
@@ -654,6 +653,67 @@ def _validate_config(self) -> None:
 - `dq/engine/custom/custom_engine.py`
 - `dq/engine/schemavalidation/schemavalidation_engine.py`
 - `dq/engine/greatexpectations/greatexpectations_engine.py`
+
+#### Implementation Details
+
+**Added to DQEngine base class:**
+```python
+class DQEngine(ABC):
+    def __init__(self, config: ConfigTree, dqts: Optional[int] = None, ...):
+        self._config = config
+        self._dqts = dqts
+        self._cache = {}
+        # ... repository setup ...
+
+        # Validate configuration at init time (fail-fast)
+        self._validate_config()
+
+    def _validate_config(self) -> None:
+        """Validate configuration at init time.
+
+        Subclasses can override this method to perform engine-specific
+        validation. This is called at the end of __init__ to provide
+        fail-fast behavior for configuration errors.
+
+        Raises:
+            ConfigurationError: If the configuration is invalid.
+        """
+        pass
+```
+
+**Implemented validation in engines:**
+
+1. **DeequEngine**: Validates `checks` exists and each check has `constraint` key
+2. **CustomEngine**: Validates `checks` exists, each check has `constraint` key, and constraint is registered
+3. **SchemavalidationEngine**: Validates `schema` key exists with table definitions
+4. **DrulesEngine**: Already had validation - moved rules import before class definition
+5. **GreatExpectationsEngine**: Already had validation - removed redundant explicit call
+
+**Added helper to ConstraintRegistry:**
+```python
+@classmethod
+def is_registered(cls, name: str) -> bool:
+    """Check if a constraint is registered."""
+    with cls._lock:
+        return name in cls._constraints
+```
+
+**Files Modified:**
+- `dq/engine/dq_engine.py` - Added `_validate_config()` base method, call in `__init__`
+- `dq/engine/deequ/deequ_engine.py` - Implemented validation for checks/constraint keys
+- `dq/engine/custom/custom_engine.py` - Implemented validation for checks/constraint/registration
+- `dq/engine/schemavalidation/schemavalidation_engine.py` - Implemented validation for schema key
+- `dq/engine/drules/drules_engine.py` - Moved rules import before class definition
+- `dq/engine/greatexpectations/greatexpectations_engine.py` - Removed redundant explicit validation call
+- `dq/engine/custom/constraint_registry.py` - Added `is_registered()` method
+- `dq/tests/unit/test_config_validation_unit.py` (NEW) - 22 comprehensive tests
+- `dq/tests/unit/test_lifecycle_hooks_unit.py` - Fixed config for CustomEngine tests
+
+#### Test Results
+All 173 unit tests pass (151 original + 22 new)
+
+#### Commit
+`19e8507` - Implement D6: Config validation split for fail-fast behavior
 
 #### Estimated Effort
 2 days
@@ -1146,6 +1206,7 @@ No native profiling capabilities. Users must manually:
 
 | Date | Change | Author |
 |------|--------|--------|
+| 2026-02-07 | Completed D6: Config Validation Split | Claude (Sonnet 4.5) |
 | 2026-02-07 | Completed D8: CatalogFactory Extensibility | Claude (Sonnet 4.5) |
 | 2026-02-07 | Completed D7: Engine Lifecycle Hooks | Claude (Sonnet 4.5) |
 | 2026-02-07 | Completed D5: Engine Discovery Fragility | Claude (Sonnet 4.5) |
