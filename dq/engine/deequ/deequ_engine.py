@@ -30,7 +30,7 @@ class DeequEngine(DQEngine):
     """
 
     def __init__(self, config: ConfigTree):
-        self._sparkSession = None
+        self._spark_session = None
         super().__init__(config)
 
     def _validate_config(self) -> None:
@@ -80,14 +80,14 @@ class DeequEngine(DQEngine):
             checks_config=self._config.get("checks", []),
             single_check_mode=self._config.get(constants.DQ_SINGLE_CHECK_MODE, False),
         )
-        self._sparkSession = dataframe.sparkSession
+        self._spark_session = dataframe.sparkSession
 
         verification_run_builder = VerificationSuite(
-            spark_session=self._sparkSession
+            spark_session=self._spark_session
         ).onData(df=dataframe)
 
         verification_run_builder = deequ_check.apply_checks(
-            verification_run_builder, self._sparkSession
+            verification_run_builder, self._spark_session
         )
 
         verification_result = verification_run_builder.run()
@@ -98,11 +98,11 @@ class DeequEngine(DQEngine):
             logger.warning("Data quality checks failed.")
 
         success_metrics = VerificationResult.successMetricsAsDataFrame(
-            spark_session=self._sparkSession,
+            spark_session=self._spark_session,
             verificationResult=verification_result,
         )
         check_verifications = VerificationResult.checkResultsAsDataFrame(
-            spark_session=self._sparkSession,
+            spark_session=self._spark_session,
             verificationResult=verification_result,
         )
 

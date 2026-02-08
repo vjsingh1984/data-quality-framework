@@ -59,7 +59,7 @@ class SchemaValidationEngine(DQEngine):
 
     def __init__(self, config: ConfigTree):
         super().__init__(config)
-        self._sparkSession = None
+        self._spark_session = None
 
     def _validate_config(self) -> None:
         """Validate SchemaValidationEngine configuration at init time."""
@@ -103,7 +103,7 @@ class SchemaValidationEngine(DQEngine):
         engine_name = self._config.get(constants.DQ_ENGINE_NAME, "Unknown")
         logger.info("Processing %s with %s Engine", rule_name, engine_name)
 
-        self._sparkSession = dataframe.sparkSession
+        self._spark_session = dataframe.sparkSession
 
         # Choose backend based on config
         backend = self._config.get("backend", "deequ")
@@ -128,7 +128,7 @@ class SchemaValidationEngine(DQEngine):
         from dq.validation.schema_validator import NativeSchemaValidator
 
         schema_config = self._config.get(constants.SCHEMA, {})
-        validator = NativeSchemaValidator(schema_config, self._sparkSession)
+        validator = NativeSchemaValidator(schema_config, self._spark_session)
 
         summary = validator.validate(df)
 
@@ -168,13 +168,13 @@ class SchemaValidationEngine(DQEngine):
 
         if single_check_mode:
             verification_result = (
-                VerificationSuite(self._sparkSession)
+                VerificationSuite(self._spark_session)
                 .onData(joined_df)
                 .addCheck(checks)
                 .run()
             )
         else:
-            verification_run_builder = VerificationSuite(self._sparkSession).onData(
+            verification_run_builder = VerificationSuite(self._spark_session).onData(
                 joined_df
             )
             for check in checks:
@@ -187,10 +187,10 @@ class SchemaValidationEngine(DQEngine):
             logger.warning("Schema validation failed.")
 
         success_metrics = VerificationResult.successMetricsAsDataFrame(
-            self._sparkSession, verification_result
+            self._spark_session, verification_result
         )
         check_verifications = VerificationResult.checkResultsAsDataFrame(
-            self._sparkSession, verification_result
+            self._spark_session, verification_result
         )
 
         if repository:
