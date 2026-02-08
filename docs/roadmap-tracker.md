@@ -90,10 +90,7 @@
                               │ D2: Return type variance│
                               │ D3: Registry pattern    │
                               │ D4: SchemaVal-Deequ     │
-                              │ D5: Engine discovery    │
                               │ D6: Config validation   │
-                              │ D7: Lifecycle hooks     │
-                              │ D8: Catalog extensibility│
                               │ V1-V6: Vision items     │
                               └─────────────────────────┘
 ```
@@ -671,10 +668,10 @@ def _validate_config(self) -> None:
 **ID**: D7
 **Priority**: Low
 **Category**: Design
-**Status**: **OPEN**
+**Status**: ✅ **COMPLETED** (2026-02-07)
 
 #### Description
-Engines have no way to perform initialization or cleanup before/after rule execution. This makes it difficult to:
+Engines had no way to perform initialization or cleanup before/after rule execution. This made it difficult to:
 - Cache expensive operations
 - Set up temporary resources (views, tables)
 - Clean up resources after execution
@@ -836,6 +833,52 @@ def after_apply(self, dataframe: DataFrame, metrics: List):
 #### Estimated Effort
 1-2 days
 
+#### Implementation Details
+
+**Added to DQEngine base class:**
+```python
+class DQEngine(ABC):
+    def __init__(self, config: ConfigTree, dqts: Optional[int] = None, ...):
+        self._cache = {}  # Cache for engine-specific data
+        # ...
+
+    def before_apply(self, dataframe: DataFrame) -> None:
+        """Hook called before apply() executes."""
+        pass
+
+    def after_apply(self, dataframe: DataFrame, metrics: List) -> None:
+        """Hook called after apply() completes (even if it fails)."""
+        pass
+```
+
+**Example implementation in CustomEngine:**
+```python
+class CustomEngine(DQEngine):
+    def before_apply(self, dataframe: DataFrame):
+        super().before_apply(dataframe)
+        self._spark_session = dataframe.sparkSession
+        self._cache_reference_dataframes(dataframe)
+
+    def after_apply(self, dataframe: DataFrame, metrics: List):
+        super().after_apply(dataframe, metrics)
+        # Unpersist all cached DataFrames
+        for cache_key, cached_df in self._cache.items():
+            if hasattr(cached_df, "unpersist"):
+                cached_df.unpersist()
+        self._cache.clear()
+```
+
+#### Files Modified
+- `dq/engine/dq_engine.py` - Added lifecycle hooks and cache to base class
+- `dq/engine/custom/custom_engine.py` - Implemented hooks for DataFrame caching
+- `dq/tests/unit/test_lifecycle_hooks_unit.py` (NEW) - 9 comprehensive tests
+
+#### Test Results
+All 155 unit tests pass (146 + 9 new)
+
+#### Commit
+`c0c46f7` - Implement D7: Engine Lifecycle Hooks
+
 #### Dependencies
 - None
 
@@ -846,42 +889,17 @@ def after_apply(self, dataframe: DataFrame, metrics: List):
 **ID**: D8
 **Priority**: Low
 **Category**: Design
-**Status**: **OPEN**
+**Status**: ✅ **COMPLETED** (2026-02-07)
 
 #### Description
-New catalog providers cannot be added without modifying `CatalogFactory`. The factory uses hard-coded type strings.
+Catalog providers could not be added without modifying `CatalogFactory`. The factory used hard-coded type strings.
 
-#### Current State
-```python
-# In catalog_factory.py
-class CatalogFactory:
-    _providers = {
-        "spark": SparkCatalogProvider,
-        "hive": SparkCatalogProvider,  # Alias
-        "unity": UnityCatalogProvider,
-        "glue": GlueCatalogProvider,
-        "delta": UnityCatalogProvider,  # Alias
-    }
+#### Implementation Details
 
-    @staticmethod
-    def get_provider(spark, catalog_type=None):
-        # Hard-coded type checking
-        if catalog_type and catalog_type.lower() in _providers:
-            provider_class = _providers[catalog_type.lower()]
-        # Auto-detection also hard-coded
-```
-
-#### Impact
-- Can't add custom catalog providers (e.g., for proprietary metastores)
-- Can't inject providers for testing
-- Violates Open/Closed Principle
-
-#### Recommended Solution
-
-1. **Make registry extensible**:
+**Added registration capability:**
 ```python
 class CatalogFactory:
-    _providers = {
+    _CATALOG_PROVIDERS = {
         "spark": SparkCatalogProvider,
         "hive": SparkCatalogProvider,
         "unity": UnityCatalogProvider,
@@ -891,53 +909,43 @@ class CatalogFactory:
     _lock = threading.Lock()
 
     @classmethod
-    def register_provider(cls, catalog_type: str, provider_class: Type[CatalogProvider]):
+    def register_provider(cls, catalog_type: str, provider_class):
         """Register a custom catalog provider."""
         if not issubclass(provider_class, CatalogProvider):
-            raise TypeError(f"{provider_class} must inherit from CatalogProvider")
+            raise TypeError(f"{provider_class.__name__} must inherit from CatalogProvider")
 
+        catalog_type = catalog_type.lower().strip()
         with cls._lock:
-            cls._providers[catalog_type.lower()] = provider_class
-            logger.debug("Registered catalog provider '%s' -> %s", catalog_type, provider_class.__name__)
+            cls._CATALOG_PROVIDERS[catalog_type] = provider_class
 
     @classmethod
-    def get_provider(cls, spark, catalog_type=None):
-        # Try explicit type first
-        if catalog_type:
-            catalog_type = catalog_type.lower()
-            if catalog_type in cls._providers:
-                return cls._providers[catalog_type](spark)
-            raise ValueError(f"Unknown catalog_type '{catalog_type}'. Available: {', '.join(cls._providers.keys())}")
-
-        # Auto-detect
-        return cls._auto_detect(spark)
+    def supported_types(cls):
+        """Return list of supported catalog type names."""
+        return list(cls._CATALOG_PROVIDERS.keys())
 ```
 
-2. **Usage example**:
+**Usage example:**
 ```python
-# Custom catalog for proprietary system
 class MyCatalogProvider(CatalogProvider):
     def __init__(self, spark_session):
         super().__init__(spark_session)
-        self._client = MyProprietaryClient()
-
-    # ... implement methods ...
+        # Custom implementation
 
 # Register at application startup
 CatalogFactory.register_provider("my_system", MyCatalogProvider)
 
-# Now usable in config
-# dqframework { catalog_type = "my_system" }
+# Now usable in config: dqframework { catalog_type = "my_system" }
 ```
 
-#### Files to Modify
-- `dq/catalog/catalog_factory.py`
+#### Files Modified
+- `dq/catalog/catalog_factory.py` - Added register_provider() and thread safety
+- `dq/tests/unit/test_catalog_factory_unit.py` - 8 comprehensive tests
 
-#### Estimated Effort
-1 day
+#### Test Results
+All 163 unit tests pass (155 + 8 new)
 
-#### Dependencies
-- None
+#### Commit
+`ede0660` - Implement D8: CatalogFactory extensibility with custom provider registration
 
 ---
 
@@ -1090,10 +1098,10 @@ No native profiling capabilities. Users must manually:
 
 ## Priority Matrix
 
-### Quick Wins (1-3 days each)
-- **D5**: Engine Discovery Fragility
-- **D8**: CatalogFactory Extensibility
-- **D7**: Engine Lifecycle Hooks
+### Quick Wins (COMPLETED)
+- ~~**D5**: Engine Discovery Fragility~~ ✅
+- **D7**: Engine Lifecycle Hooks ✅
+- **D8**: CatalogFactory Extensibility ✅
 
 ### Medium Effort (2-5 days each)
 - **D2**: Return Type Variance
@@ -1138,6 +1146,8 @@ No native profiling capabilities. Users must manually:
 
 | Date | Change | Author |
 |------|--------|--------|
+| 2026-02-07 | Completed D8: CatalogFactory Extensibility | Claude (Sonnet 4.5) |
+| 2026-02-07 | Completed D7: Engine Lifecycle Hooks | Claude (Sonnet 4.5) |
 | 2026-02-07 | Completed D5: Engine Discovery Fragility | Claude (Sonnet 4.5) |
 | 2026-02-07 | Initial tracker creation, completed Phases A-D | Claude (Sonnet 4.5) |
 | | | |
