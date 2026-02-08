@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 def _check_min_max_threshold(
     check_verifications,
     metric_results,
-    col,
+    column,
     dq_dimension,
     constraint,
     value,
@@ -30,42 +30,42 @@ def _check_min_max_threshold(
     """Check value against min/max thresholds and append results."""
     if min_value and value < min_value:
         metric_results.append(
-            ["MultiColumn", f"{constraint} {group_by} for {col}", dq_dimension, 0]
+            ["MultiColumn", f"{constraint} {group_by} for {column}", dq_dimension, 0]
         )
         check_verifications.append(
             [
                 constraint,
                 level,
                 "Error",
-                f"{constraint} {group_by} for {col}",
+                f"{constraint} {group_by} for {column}",
                 "Failure",
                 f"{value} is below the threshold - {min_value}",
             ]
         )
     elif max_value and value > max_value:
         metric_results.append(
-            ["MultiColumn", f"{constraint} {group_by} for {col}", dq_dimension, 0]
+            ["MultiColumn", f"{constraint} {group_by} for {column}", dq_dimension, 0]
         )
         check_verifications.append(
             [
                 constraint,
                 level,
                 "Error",
-                f"{constraint} {group_by} for {col}",
+                f"{constraint} {group_by} for {column}",
                 "Failure",
                 f"{value} is above the threshold - {max_value}",
             ]
         )
     else:
         metric_results.append(
-            ["MultiColumn", f"{constraint} {group_by} for {col}", dq_dimension, 1]
+            ["MultiColumn", f"{constraint} {group_by} for {column}", dq_dimension, 1]
         )
         check_verifications.append(
             [
                 constraint,
                 level,
                 "Success",
-                f"{constraint} {group_by} for {col}",
+                f"{constraint} {group_by} for {column}",
                 "Success",
                 f"{value} meets the threshold",
             ]
@@ -102,12 +102,12 @@ class DistinctnessByGroup(CustomConstraint):
         check_verifications = []
 
         for row in data_collect:
-            for col in columns:
-                distinct_count = row[col]
+            for column in columns:
+                distinct_count = row[column]
                 _check_min_max_threshold(
                     check_verifications,
                     metric_results,
-                    col,
+                    column,
                     dq_dimension,
                     constraint,
                     distinct_count,

@@ -32,8 +32,8 @@ class RateOfChange(CustomConstraint):
         group_by = config.get("group_by", None)
         dq_dimension = config.get("dq_dimension", "Compliance")
         constraint = config.get("constraint", "RateOfChange")
-        min_val = config.get("min", None)
-        max_val = config.get("max", None)
+        min_value = config.get("min", None)
+        max_value = config.get("max", None)
         level = config.get("level", "Warning")
         sort_by = config.get("sort_by", None)
         max_rows = config.get("max_rows", _MAX_COLLECT_ROWS)
@@ -64,8 +64,8 @@ class RateOfChange(CustomConstraint):
         check_verifications = []
 
         for row in df_final:
-            for col in columns:
-                value_list = row[f"{col}_list"]
+            for column in columns:
+                value_list = row[f"{column}_list"]
                 if value_list and len(value_list) == 2:
                     # Guard against division by zero
                     if value_list[0] == 0:
@@ -76,21 +76,21 @@ class RateOfChange(CustomConstraint):
                         )
                     logger.debug(
                         "%s - value list is %s and chg %% is %s",
-                        col,
+                        column,
                         value_list,
                         change_percentile,
                     )
                     _check_min_max_threshold(
                         check_verifications,
                         metric_results,
-                        col,
+                        column,
                         dq_dimension,
                         constraint,
                         change_percentile,
                         group_by,
                         level,
-                        max_val,
-                        min_val,
+                        max_value,
+                        min_value,
                     )
 
         if len(metric_results) == 0:

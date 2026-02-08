@@ -36,8 +36,8 @@ class LookupColumnList(CustomConstraint):
         logger.debug("Running LookupColumnList constraint")
 
         if ignore_columns and len(ignore_columns) > 0:
-            for col in ignore_columns:
-                dataframe = dataframe.drop(col)
+            for column in ignore_columns:
+                dataframe = dataframe.drop(column)
 
         # Validate identifiers to prevent SQL injection
         if ref_table and not _SQL_IDENTIFIER.match(ref_table):

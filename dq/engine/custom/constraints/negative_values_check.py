@@ -32,8 +32,8 @@ class NegativeValuesCheck(CustomConstraint):
         logger.debug("Running NegativeValuesCheck constraint")
 
         if ignore_columns and len(ignore_columns) > 0:
-            for col in ignore_columns:
-                dataframe = dataframe.drop(col)
+            for column in ignore_columns:
+                dataframe = dataframe.drop(column)
 
         columns_to_check = dataframe.columns
         negative_counts = (
