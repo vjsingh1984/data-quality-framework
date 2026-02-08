@@ -230,9 +230,9 @@ def process_schemavalidation_success(spark, df, config):
     dfsignups = spark.sql("SELECT signup_date from temp_data_table")
     dfsignups.createOrReplaceTempView("temp_signup_dates")
     # Apply Schema Validation including multi-column unique and foreign key constraints
-    summarymetrics = schema_validation_engine.apply(df, repository=None)
+    summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
-    for metric in summarymetrics:
+    for metric in summary_metrics:
         print(json.dumps(metric, indent=2))
         assert metric["success"] == True, f"{metric} failed."
         if not (metric["success"]):
@@ -244,7 +244,7 @@ def process_schemavalidation_success(spark, df, config):
         print("schema\n")
         df.printSchema()
         print("summarymetric\n")
-        print(json.dumps(summarymetrics, indent=2))
+        print(json.dumps(summary_metrics, indent=2))
     return overallsuccess
 
 
@@ -258,9 +258,9 @@ def process_schemavalidation_failure(spark, df, config):
     dfsignups = spark.sql("SELECT signup_date from temp_data_table limit 1")
     dfsignups.createOrReplaceTempView("temp_signup_dates")
     # Apply Schema Validation including multi-column unique and foreign key constraints
-    summarymetrics = schema_validation_engine.apply(df, repository=None)
+    summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
-    for metric in summarymetrics:
+    for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
@@ -333,9 +333,9 @@ def test_schemavalidation_float_type_success(spark):
     """
     )
     schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
-    summarymetrics = schema_validation_engine.apply(df, repository=None)
+    summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
-    for metric in summarymetrics:
+    for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
@@ -452,9 +452,9 @@ def test_nullable_false_schemavalidation_single_check_mode_success(spark):
     )
 
     schema_validation_engine = SchemavalidationEngine(not_null_constraint_config)
-    summarymetrics = schema_validation_engine.apply(df, repository=None)
+    summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
-    for metric in summarymetrics:
+    for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
@@ -466,7 +466,7 @@ def test_nullable_false_schemavalidation_single_check_mode_success(spark):
         print("Schema")
         df.printSchema()
         print("summary")
-        print(json.dumps(summarymetrics, indent=2))
+        print(json.dumps(summary_metrics, indent=2))
     assert True == overallsuccess, "atleast one metric failed"
 
 
@@ -497,9 +497,9 @@ def test_nullable_true_schemavalidation_single_check_mode_success(spark):
     )
 
     schema_validation_engine = SchemavalidationEngine(not_null_constraint_config)
-    summarymetrics = schema_validation_engine.apply(df, repository=None)
+    summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
-    for metric in summarymetrics:
+    for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
@@ -511,7 +511,7 @@ def test_nullable_true_schemavalidation_single_check_mode_success(spark):
         print("Schema")
         df.printSchema()
         print("summary")
-        print(json.dumps(summarymetrics, indent=2))
+        print(json.dumps(summary_metrics, indent=2))
     assert True == overallsuccess, "atleast one metric failed"
 
 
@@ -542,9 +542,9 @@ def test_nullable_true_schemavalidation_multi_check_mode_success(spark):
     )
 
     schema_validation_engine = SchemavalidationEngine(not_null_constraint_config)
-    summarymetrics = schema_validation_engine.apply(df, repository=None)
+    summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
-    for metric in summarymetrics:
+    for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
@@ -556,7 +556,7 @@ def test_nullable_true_schemavalidation_multi_check_mode_success(spark):
         print("Schema")
         df.printSchema()
         print("summary")
-        print(json.dumps(summarymetrics, indent=2))
+        print(json.dumps(summary_metrics, indent=2))
     assert True == overallsuccess, "atleast one metric failed"
 
 
@@ -588,9 +588,9 @@ def test_nullable_false_schemavalidation_single_check_mode_failure(spark):
     )
 
     schema_validation_engine = SchemavalidationEngine(not_null_constraint_config)
-    summarymetrics = schema_validation_engine.apply(df, repository=None)
+    summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
-    for metric in summarymetrics:
+    for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
@@ -602,5 +602,5 @@ def test_nullable_false_schemavalidation_single_check_mode_failure(spark):
         print("Schema")
         df.printSchema()
         print("summary")
-        print(json.dumps(summarymetrics, indent=2))
+        print(json.dumps(summary_metrics, indent=2))
     assert False == overallsuccess, "Atleast one metric should have failed"

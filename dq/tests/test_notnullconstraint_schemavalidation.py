@@ -36,9 +36,9 @@ def test_schemavalidation_with_nullvalue_and_disabled_notnull_success(spark):
     """
     )
     schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
-    summarymetrics = schema_validation_engine.apply(df, repository=None)
+    summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
-    for metric in summarymetrics:
+    for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
@@ -76,9 +76,9 @@ def test_schemavalidation_without_nullvalue_and_enabled_notnull_success(spark):
     """
     )
     schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
-    summarymetrics = schema_validation_engine.apply(df, repository=None)
+    summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
-    for metric in summarymetrics:
+    for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False

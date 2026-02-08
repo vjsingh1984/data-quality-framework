@@ -122,7 +122,7 @@ class GreatexpectationsEngine(DQEngine):
         self, validation_output
     ) -> List[Dict[str, Any]]:
         """Extract metric dictionaries from GE validation output."""
-        summarymetrics = []
+        summary_metrics = []
         for exp_result in validation_output.results:
             check_type = exp_result.expectation_config.expectation_type
 
@@ -139,5 +139,5 @@ class GreatexpectationsEngine(DQEngine):
                 details=details,
                 constraint=check_type,
             )
-            summarymetrics.append(metric.to_dict())
-        return summarymetrics
+            summary_metrics.append(metric.to_dict())
+        return summary_metrics

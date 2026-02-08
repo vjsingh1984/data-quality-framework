@@ -21,9 +21,9 @@ def process_schemavalidation_success(spark, df, config):
     df.createOrReplaceTempView("temp_data_table")
 
     # Apply Schema Validation including multi-column unique and foreign key constraints
-    summarymetrics = schema_validation_engine.apply(df, repository=None)
+    summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
-    for metric in summarymetrics:
+    for metric in summary_metrics:
         print(json.dumps(metric, indent=2))
         assert metric["success"] == True, f"{metric} failed."
         if not (metric["success"]):
@@ -38,9 +38,9 @@ def process_schemavalidation_failure(spark, df, config):
     df.createOrReplaceTempView("temp_data_table")
 
     # Apply Schema Validation including multi-column unique and foreign key constraints
-    summarymetrics = schema_validation_engine.apply(df, repository=None)
+    summary_metrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
-    for metric in summarymetrics:
+    for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False

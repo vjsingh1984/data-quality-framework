@@ -118,9 +118,9 @@ def test_single_check_deequ_engine_success(
     sample_success_dataframe, deequ_single_check_config
 ):
     engine = DeequEngine(deequ_single_check_config)
-    summarymetrics = engine.apply(sample_success_dataframe, repository=None)
+    summary_metrics = engine.apply(sample_success_dataframe, repository=None)
     overallsuccess = True
-    for metric in summarymetrics:
+    for metric in summary_metrics:
         assert metric["success"] == True, f"{metric} failed."
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
@@ -134,9 +134,9 @@ def test_multi_check_deequ_engine_success(
     sample_success_dataframe, deequ_multi_check_config
 ):
     engine = DeequEngine(deequ_multi_check_config)
-    summarymetrics = engine.apply(sample_success_dataframe, repository=None)
+    summary_metrics = engine.apply(sample_success_dataframe, repository=None)
     overallsuccess = True
-    for metric in summarymetrics:
+    for metric in summary_metrics:
         assert metric["success"] == True, f"{metric} failed."
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
@@ -150,9 +150,9 @@ def test_single_check_deequ_engine_failure(
     sample_failure_dataframe, deequ_single_check_config
 ):
     engine = DeequEngine(deequ_single_check_config)
-    summarymetrics = engine.apply(sample_failure_dataframe, repository=None)
+    summary_metrics = engine.apply(sample_failure_dataframe, repository=None)
     overallsuccess = True
-    for metric in summarymetrics:
+    for metric in summary_metrics:
         if not (metric["success"]):
             overallsuccess = False
 
@@ -164,9 +164,9 @@ def test_multi_check_deequ_engine_failure(
     sample_failure_dataframe, deequ_multi_check_config
 ):
     engine = DeequEngine(deequ_multi_check_config)
-    summarymetrics = engine.apply(sample_failure_dataframe, repository=None)
+    summary_metrics = engine.apply(sample_failure_dataframe, repository=None)
     overallsuccess = True
-    for metric in summarymetrics:
+    for metric in summary_metrics:
         if not (metric["success"]):
             overallsuccess = False
 
