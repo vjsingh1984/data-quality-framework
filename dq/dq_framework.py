@@ -117,7 +117,7 @@ class DQFramework:
                 - ``success``: Boolean result
                 - ``details``: Detailed check output
                 - ``ts``: Timestamp in milliseconds
-                - ``jobid``: Spark application ID
+                - ``jobid``: Spark application ID (output format uses 'jobid' key)
         """
         from pydeequ.repository import ResultKey
 

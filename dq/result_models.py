@@ -21,7 +21,7 @@ class DQResult:
         rule_name: Name of the rule this check belongs to.
         level: Severity level (e.g. "Error", "Warning").
         ts: Timestamp in milliseconds when the check was run.
-        jobid: Spark application ID.
+        job_id: Spark application ID.
     """
 
     check: str
@@ -31,20 +31,20 @@ class DQResult:
     rule_name: str = ""
     level: str = "Error"
     ts: Optional[int] = None
-    jobid: Optional[str] = None
+    job_id: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to legacy dict format for backward compatibility.
 
         Returns:
-            Dict with ``check``, ``success``, ``details``, ``ts``, ``jobid``.
+            Dict with ``check``, ``success``, ``details``, ``ts``, ``job_id``.
         """
         return {
             "check": self.check,
             "success": self.success,
             "details": self.details,
             "ts": self.ts,
-            "jobid": self.jobid,
+            "jobid": self.job_id,
         }
 
     @classmethod
@@ -65,5 +65,5 @@ class DQResult:
             rule_name=d.get("rule_name", ""),
             level=d.get("level", "Error"),
             ts=d.get("ts"),
-            jobid=d.get("jobid"),
+            job_id=d.get("jobid"),
         )

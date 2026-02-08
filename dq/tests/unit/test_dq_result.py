@@ -17,7 +17,7 @@ class TestDQResult:
         assert result.rule_name == ""
         assert result.level == "Error"
         assert result.ts is None
-        assert result.jobid is None
+        assert result.job_id is None
 
     def test_create_full(self):
         result = DQResult(
@@ -28,7 +28,7 @@ class TestDQResult:
             rule_name="quality_rule_1",
             level="Warning",
             ts=1700000000000,
-            jobid="app-123",
+            job_id="app-123",
         )
         assert result.check == "completeness"
         assert result.success is False
@@ -36,7 +36,7 @@ class TestDQResult:
         assert result.engine == "deequ"
         assert result.level == "Warning"
         assert result.ts == 1700000000000
-        assert result.jobid == "app-123"
+        assert result.job_id == "app-123"
 
     def test_to_dict(self):
         result = DQResult(
@@ -47,7 +47,7 @@ class TestDQResult:
             rule_name="rule1",
             level="Error",
             ts=123456,
-            jobid="app-1",
+            job_id="app-1",
         )
         d = result.to_dict()
         assert d == {
@@ -94,7 +94,7 @@ class TestDQResult:
         assert result.details["expected"] == 100
         assert result.engine == "deequ"
         assert result.ts == 999999
-        assert result.jobid == "spark-abc"
+        assert result.job_id == "spark-abc"
 
     def test_round_trip(self):
         original = DQResult(
@@ -102,7 +102,7 @@ class TestDQResult:
             success=True,
             details={"nested": {"a": 1}},
             ts=111,
-            jobid="j1",
+            job_id="j1",
         )
         d = original.to_dict()
         restored = DQResult.from_legacy_dict(d)
@@ -110,7 +110,7 @@ class TestDQResult:
         assert restored.success == original.success
         assert restored.details == original.details
         assert restored.ts == original.ts
-        assert restored.jobid == original.jobid
+        assert restored.job_id == original.job_id
 
     def test_from_legacy_dict_empty(self):
         result = DQResult.from_legacy_dict({})
