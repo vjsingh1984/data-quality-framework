@@ -114,13 +114,13 @@ class DatabricksCheck:
                         )
 
         if len(timeline_metrics) > 0:
-            df_metrics_results = spark.createDataFrame(
+            metrics_dataframe = spark.createDataFrame(
                 timeline_metrics, ["entity", "instance", "name", "value"]
             )
             current_time_in_millis = time() * 1000
             partition_year = F.year(F.from_unixtime(F.lit(time())))
             metrics_dataframe = (
-                df_metrics_results.withColumn("dqts", F.lit(current_time_in_millis))
+                metrics_dataframe.withColumn("dqts", F.lit(current_time_in_millis))
                 .withColumn("dataset", F.lit(domain))
                 .withColumn("year", F.lit(partition_year))
             )

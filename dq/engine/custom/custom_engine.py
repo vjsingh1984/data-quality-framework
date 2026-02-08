@@ -143,10 +143,10 @@ class CustomEngine(DQEngine):
                 _metrics_results += _results
                 _verification_results += _check_verification
 
-            df_metrics_results = spark_session.createDataFrame(
+            metrics_dataframe = spark_session.createDataFrame(
                 _metrics_results, ["entity", "instance", "name", "value"]
             )
-            df_check_verification_results = spark_session.createDataFrame(
+            verifications_dataframe = spark_session.createDataFrame(
                 _verification_results,
                 [
                     "check",
@@ -164,19 +164,19 @@ class CustomEngine(DQEngine):
                 current_milli_time = ResultKey.current_milli_time()
                 repository_utils.save_to_repository(
                     repository,
-                    df_metrics_results,
+                    metrics_dataframe,
                     constants.DQ_REPOSITORY_METRICS,
                     current_milli_time,
                 )
                 repository_utils.save_to_repository(
                     repository,
-                    df_check_verification_results,
+                    verifications_dataframe,
                     constants.DQ_REPOSITORY_VERIFICATIONS,
                     current_milli_time,
                 )
 
             summary_metrics = []
-            for check in df_metrics_results.collect():
+            for check in metrics_dataframe.collect():
                 check_name = check["name"]
                 # Extract constraint from check name if possible
                 constraint = check_name

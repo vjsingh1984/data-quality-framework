@@ -79,14 +79,14 @@ class DQFramework:
         dataframes = {}
         config_dataframes = self._config.get("dqframework.dataframes", {})
 
-        for df_name, table_ref in config_dataframes.items():
+        for dataframe_name, table_ref in config_dataframes.items():
             try:
-                df = self._resolve_config_dataframe(df_name, table_ref)
+                df = self._resolve_config_dataframe(dataframe_name, table_ref)
                 if df is not None:
-                    dataframes[df_name] = df
+                    dataframes[dataframe_name] = df
             except Exception as e:
                 raise ConfigurationError(
-                    f"Failed to load DataFrame '{df_name}': {e}"
+                    f"Failed to load DataFrame '{dataframe_name}': {e}"
                 ) from e
 
         if self.default_dataframe is not None and "default" not in dataframes:
@@ -94,12 +94,12 @@ class DQFramework:
 
         return dataframes
 
-    def _resolve_config_dataframe(self, df_name, table_ref):
+    def _resolve_config_dataframe(self, dataframe_name, table_ref):
         """Resolve a DataFrame reference from configuration."""
         if isinstance(table_ref, str):
             return self._catalog_provider.get_dataframe(table_ref)
         elif hasattr(table_ref, "get"):
-            table = table_ref.get("table", df_name)
+            table = table_ref.get("table", dataframe_name)
             database = table_ref.get("database", None)
             catalog = table_ref.get("catalog", None)
             return self._catalog_provider.get_dataframe(
@@ -126,7 +126,7 @@ class DQFramework:
         cumulative_metrics = []
 
         for rule_config in self._config.get("dqframework.dqrules", []):
-            df_names = rule_config.get("dataframes", ["default"])
+            dataframe_names = rule_config.get("dataframes", ["default"])
             engine_name = rule_config.get(constants.DQ_ENGINE_NAME, None)
 
             if engine_name is None:
@@ -137,8 +137,8 @@ class DQFramework:
                 engine_name, rule_config, current_time_in_millis
             )
 
-            for df_name in df_names:
-                dataframe = self.resolve_dataframe(df_name)
+            for dataframe_name in dataframe_names:
+                dataframe = self.resolve_dataframe(dataframe_name)
                 summary_metrics = engine.apply(
                     dataframe, repository=self._config.get("dqframework.repository", {})
                 )
