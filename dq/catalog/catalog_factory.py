@@ -3,21 +3,14 @@
 
 """Factory for creating catalog provider instances."""
 import logging
+import threading
 
+from dq.catalog.base import CatalogProvider
 from dq.catalog.glue_catalog import GlueCatalogProvider
 from dq.catalog.spark_catalog import SparkCatalogProvider
 from dq.catalog.unity_catalog import UnityCatalogProvider
 
 logger = logging.getLogger(__name__)
-
-# Registry of catalog type names to provider classes
-_CATALOG_PROVIDERS = {
-    "spark": SparkCatalogProvider,
-    "hive": SparkCatalogProvider,  # Hive uses Spark's built-in catalog
-    "unity": UnityCatalogProvider,
-    "delta": UnityCatalogProvider,  # Delta tables use Unity Catalog on Databricks
-    "glue": GlueCatalogProvider,
-}
 
 
 class CatalogFactory:
@@ -26,6 +19,8 @@ class CatalogFactory:
     Supports automatic detection of the catalog type from SparkSession
     configuration when no explicit type is specified.
 
+    Custom catalog providers can be registered via ``register_provider()``.
+
     Usage::
 
         factory = CatalogFactory()
@@ -33,6 +28,41 @@ class CatalogFactory:
         df = provider.get_dataframe("main.sales.orders")
         schema = provider.get_table_schema("main.sales.orders")
     """
+
+    # Registry of catalog type names to provider classes
+    _CATALOG_PROVIDERS = {
+        "spark": SparkCatalogProvider,
+        "hive": SparkCatalogProvider,  # Hive uses Spark's built-in catalog
+        "unity": UnityCatalogProvider,
+        "delta": UnityCatalogProvider,  # Delta tables use Unity Catalog on Databricks
+        "glue": GlueCatalogProvider,
+    }
+    _lock = threading.Lock()
+
+    @classmethod
+    def register_provider(cls, catalog_type: str, provider_class):
+        """Register a custom catalog provider.
+
+        Args:
+            catalog_type: Catalog type identifier (e.g., "my_system").
+            provider_class: CatalogProvider subclass to register.
+
+        Raises:
+            TypeError: If provider_class doesn't inherit from CatalogProvider.
+        """
+        if not issubclass(provider_class, CatalogProvider):
+            raise TypeError(
+                f"{provider_class.__name__} must inherit from CatalogProvider"
+            )
+
+        catalog_type = catalog_type.lower().strip()
+        with cls._lock:
+            cls._CATALOG_PROVIDERS[catalog_type] = provider_class
+            logger.debug(
+                "Registered catalog provider '%s' -> %s",
+                catalog_type,
+                provider_class.__name__,
+            )
 
     @staticmethod
     def get_provider(spark_session, catalog_type=None, **kwargs):
@@ -57,11 +87,11 @@ class CatalogFactory:
         catalog_type = catalog_type.lower().strip()
         logger.info("Using catalog provider: %s", catalog_type)
 
-        provider_class = _CATALOG_PROVIDERS.get(catalog_type)
+        provider_class = CatalogFactory._CATALOG_PROVIDERS.get(catalog_type)
         if provider_class is None:
             raise ValueError(
                 f"Unknown catalog_type '{catalog_type}'. "
-                f"Supported types: {', '.join(_CATALOG_PROVIDERS.keys())}"
+                f"Supported types: {', '.join(CatalogFactory._CATALOG_PROVIDERS.keys())}"
             )
 
         if provider_class == GlueCatalogProvider:
@@ -125,11 +155,11 @@ class CatalogFactory:
         logger.debug("Defaulting to Spark catalog")
         return "spark"
 
-    @staticmethod
-    def supported_types():
+    @classmethod
+    def supported_types(cls):
         """Return list of supported catalog type names.
 
         Returns:
             List of strings.
         """
-        return list(_CATALOG_PROVIDERS.keys())
+        return list(cls._CATALOG_PROVIDERS.keys())
