@@ -10,6 +10,15 @@ from dq.catalog.catalog_factory import CatalogFactory
 from dq.config.config_loader import AutoConfigLoader, ConfigLoader
 from dq.engine.engine_loader import EngineLoader
 from dq.exceptions import ConfigurationError
+from dq.observability import (
+    DatadogExporter,
+    LoggingExporter,
+    MetricsExporter,
+    MetricsRegistry,
+    OpenTelemetryExporter,
+    PerformanceMonitor,
+    PrometheusExporter,
+)
 from dq.resolver import (
     CatalogProviderResolver,
     ChainedResolver,
@@ -58,6 +67,13 @@ class DQFramework:
         self.dataframes = self._load_dataframes()
         self._resolver = resolver or self._build_resolver()
 
+        # Initialize observability components
+        self._metrics_exporters = self._init_metrics_exporters()
+        self._metrics_registry = MetricsRegistry()
+        self._performance_monitor = PerformanceMonitor(
+            exporter=self._metrics_exporters[0] if self._metrics_exporters else None
+        )
+
     def _build_resolver(self) -> ChainedResolver:
         """Build the default resolver chain."""
         return ChainedResolver(
@@ -69,6 +85,43 @@ class DQFramework:
             ],
             catalog_type=self._catalog_type,
         )
+
+    def _init_metrics_exporters(self) -> List[MetricsExporter]:
+        """Initialize metrics exporters from configuration.
+
+        Returns:
+            List of configured metrics exporters.
+        """
+        exporters = []
+        observability_config = self._config.get("dqframework.observability", {})
+
+        # Check which exporters are enabled
+        if observability_config.get("prometheus_enabled", False):
+            prometheus_port = observability_config.get("prometheus_port", 9090)
+            exporter = PrometheusExporter(port=prometheus_port)
+            exporters.append(exporter)
+            logger.info("Prometheus exporter enabled on port %d", prometheus_port)
+
+        if observability_config.get("opentelemetry_enabled", False):
+            otel_endpoint = observability_config.get(
+                "opentelemetry_endpoint", "http://localhost:4318"
+            )
+            exporter = OpenTelemetryExporter(endpoint=otel_endpoint)
+            exporters.append(exporter)
+            logger.info("OpenTelemetry exporter enabled: %s", otel_endpoint)
+
+        if observability_config.get("datadog_enabled", False):
+            api_key = observability_config.get("datadog_api_key")
+            app_key = observability_config.get("datadog_app_key")
+            exporter = DatadogExporter(api_key=api_key, app_key=app_key)
+            exporters.append(exporter)
+            logger.info("Datadog exporter enabled")
+
+        # Always add logging exporter as fallback
+        exporters.append(LoggingExporter())
+        logger.info("Logging exporter enabled")
+
+        return exporters
 
     def _load_dataframes(self):
         """Load DataFrames from configuration.
@@ -139,12 +192,22 @@ class DQFramework:
 
             for dataframe_name in dataframe_names:
                 dataframe = self.resolve_dataframe(dataframe_name)
-                summary_metrics = engine.apply(
-                    dataframe, repository=self._config.get("dqframework.repository", {})
-                )
+
+                # Track performance with monitoring
+                with self._performance_monitor.monitor_engine(
+                    engine_name, dataframe_name
+                ):
+                    summary_metrics = engine.apply(
+                        dataframe,
+                        repository=self._config.get("dqframework.repository", {}),
+                    )
+
+                # Process metrics
                 for metric in summary_metrics:
                     metric["ts"] = current_timestamp_ms
                     metric["jobid"] = application_id
+                    metric["engine"] = engine_name
+                    metric["dataset"] = dataframe_name
                     if constants.DQ_METRICS_RESULT_SUCCESS_KEY in metric:
                         if not metric[constants.DQ_METRICS_RESULT_SUCCESS_KEY]:
                             try:
@@ -156,6 +219,23 @@ class DQFramework:
                                     str(metric.get("check", "unknown")),
                                 )
                     cumulative_metrics.append(metric)
+
+        # Export metrics to configured exporters
+        if self._metrics_exporters:
+            for exporter in self._metrics_exporters:
+                try:
+                    exporter.export_metrics(cumulative_metrics)
+                except Exception as e:
+                    logger.error("Failed to export metrics: %s", e)
+
+        # Log performance summary
+        perf_summary = self._performance_monitor.get_summary()
+        logger.info(
+            "Execution completed: %d checks, %d engines, total time: %d ms",
+            len(cumulative_metrics),
+            perf_summary.get("total_executions", 0),
+            perf_summary.get("total_execution_time_ms", 0),
+        )
 
         return cumulative_metrics
 
