@@ -44,7 +44,7 @@ class DatabricksCheck:
 
         w = WorkspaceClient(host=self._databricks_url, token=self._databricks_token)
 
-        _timelines_metrics = []
+        timeline_metrics = []
 
         dq_metrics_table = f"{domain}_dq.dq_metrics"
         end_date = datetime.now()
@@ -75,7 +75,7 @@ class DatabricksCheck:
                     )
                     actual_runs = 0
                     for run in run_list:
-                        _timelines_metrics.append(
+                        timeline_metrics.append(
                             [
                                 domain_job_name,
                                 f"Job id: {job_id}, run id : {run.run_id}",
@@ -83,15 +83,15 @@ class DatabricksCheck:
                                 run.run_duration,
                             ]
                         )
-                        _value = 0
+                        invocation_value = 0
                         if RunResultState.SUCCESS == run.state.result_state:
-                            _value = 1
-                        _timelines_metrics.append(
+                            invocation_value = 1
+                        timeline_metrics.append(
                             [
                                 domain_job_name,
                                 f"Job id: {job_id}, run id : {run.run_id}",
                                 "Timeliness.Invocations",
-                                _value,
+                                invocation_value,
                             ]
                         )
                         actual_runs += 1
@@ -104,7 +104,7 @@ class DatabricksCheck:
                             RunResultState.SUCCESS == run.state.result_state,
                         )
                     if expected_runs > actual_runs:
-                        _timelines_metrics.append(
+                        timeline_metrics.append(
                             [
                                 domain_job_name,
                                 f"Job id: {job_id}, expected to run {expected_runs} but actual run was {actual_runs}",
@@ -113,9 +113,9 @@ class DatabricksCheck:
                             ]
                         )
 
-        if len(_timelines_metrics) > 0:
+        if len(timeline_metrics) > 0:
             df_metrics_results = spark.createDataFrame(
-                _timelines_metrics, ["entity", "instance", "name", "value"]
+                timeline_metrics, ["entity", "instance", "name", "value"]
             )
             current_time_in_millis = time() * 1000
             partition_year = F.year(F.from_unixtime(F.lit(time())))
