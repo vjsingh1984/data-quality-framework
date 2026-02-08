@@ -172,6 +172,20 @@ class DQFramework:
                 - ``ts``: Timestamp in milliseconds
                 - ``jobid``: Spark application ID (output format uses 'jobid' key)
         """
+        # Check if multi-engine mode is enabled
+        execution_mode = self._config.get("dqframework.execution_mode", "sequential")
+
+        if execution_mode in ("multi_engine", "multi-engine", "parallel", "batched"):
+            return self._run_multi_engine(execution_mode)
+        else:
+            return self._run_sequential()
+
+    def _run_sequential(self) -> List[Dict[str, Any]]:
+        """Run engines in sequential mode (default behavior).
+
+        Returns:
+            List of metric dictionaries.
+        """
         from pydeequ.repository import ResultKey
 
         current_timestamp_ms = ResultKey.current_milli_time()
@@ -235,6 +249,115 @@ class DQFramework:
             len(cumulative_metrics),
             perf_summary.get("total_executions", 0),
             perf_summary.get("total_execution_time_ms", 0),
+        )
+
+        return cumulative_metrics
+
+    def _run_multi_engine(self, execution_mode: str) -> List[Dict[str, Any]]:
+        """Run engines using multi-engine orchestrator.
+
+        Args:
+            execution_mode: Execution mode (parallel, batched).
+
+        Returns:
+            List of metric dictionaries.
+        """
+        from pydeequ.repository import ResultKey
+
+        from dq.engine.multi_engine import (
+            EngineExecutionConfig,
+            ExecutionStrategy,
+            MultiEngineOrchestrator,
+        )
+
+        current_timestamp_ms = ResultKey.current_milli_time()
+        application_id = self._spark.sparkContext.applicationId
+
+        # Determine strategy
+        if execution_mode in ("parallel", "multi_engine"):
+            strategy = ExecutionStrategy.PARALLEL
+        elif execution_mode == "batched":
+            strategy = ExecutionStrategy.BATCHED
+        else:
+            strategy = ExecutionStrategy.SEQUENTIAL
+
+        # Get max workers from config
+        max_workers = self._config.get("dqframework.max_workers", None)
+
+        # Create orchestrator
+        orchestrator = MultiEngineOrchestrator(
+            strategy=strategy,
+            max_workers=max_workers,
+            fail_fast=self._config.get("dqframework.fail_fast", False),
+        )
+
+        # Load engines and dataframes
+        engine_configs = self._config.get("dqframework.dqrules", [])
+
+        for rule_config in engine_configs:
+            engine_name = rule_config.get(constants.DQ_ENGINE_NAME)
+            if not engine_name:
+                continue
+
+            # Load engine
+            engine = self._engine_loader.load_engine(
+                engine_name, rule_config, current_timestamp_ms
+            )
+
+            # Get dataframes for this rule
+            dataframe_names = rule_config.get("dataframes", ["default"])
+
+            # Add to orchestrator
+            orchestrator.add_engine(engine, dataframe_names)
+
+        # Register all pre-loaded dataframes
+        for df_name, df in self.dataframes.items():
+            orchestrator.add_dataframe(df_name, df)
+
+        # Add default dataframe if present
+        if self.default_dataframe is not None:
+            orchestrator.add_dataframe("default", self.default_dataframe)
+
+        # Create execution config
+        execution_config = EngineExecutionConfig(
+            strategy=strategy,
+            max_workers=max_workers,
+            repository=self._config.get("dqframework.repository", None),
+            fail_fast=self._config.get("dqframework.fail_fast", False),
+        )
+
+        # Execute
+        multi_result = orchestrator.run_with_config(execution_config)
+
+        # Convert MultiEngineResult to metric list format
+        cumulative_metrics = []
+        for engine_result in multi_result.results:
+            # Add timestamps and jobid to each metric
+            for metric in engine_result.metrics:
+                metric["ts"] = current_timestamp_ms
+                metric["jobid"] = application_id
+                metric["engine"] = engine_result.engine_name
+                metric["dataset"] = engine_result.dataframe_name
+                cumulative_metrics.append(metric)
+
+        # Export metrics to configured exporters
+        if self._metrics_exporters:
+            for exporter in self._metrics_exporters:
+                try:
+                    exporter.export_metrics(cumulative_metrics)
+                except Exception as e:
+                    logger.error("Failed to export metrics: %s", e)
+
+        # Log summary
+        logger.info(
+            "Multi-engine execution completed: %d engines executed",
+            multi_result.total_engines,
+        )
+        logger.info(
+            "Successful: %d, Failed: %d, Total time: %d ms",
+            multi_result.successful_engines,
+            multi_result.failed_engines,
+            multi_result.total_execution_time_ms,
         )
 
         return cumulative_metrics
