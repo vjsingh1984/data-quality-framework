@@ -5,9 +5,10 @@
 from __future__ import annotations
 
 import logging
-import threading
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Dict, List, Tuple, Type
+
+from dq.utils.registry_base import GenericRegistry
 
 if TYPE_CHECKING:
     from pyspark.sql import DataFrame
@@ -35,64 +36,30 @@ class CustomConstraint(ABC):
         """
 
 
-class ConstraintRegistry:
+class ConstraintRegistry(GenericRegistry[CustomConstraint]):
     """Registry for custom constraint types.
 
     Supports external constraint registration via ``register(name, cls)``.
+    Inherits thread-safe registration and lookup from GenericRegistry.
     """
 
     _constraints: Dict[str, Type[CustomConstraint]] = {}
-    _lock = threading.Lock()
 
     @classmethod
-    def register(cls, name: str, constraint_class: Type[CustomConstraint]) -> None:
-        """Register a constraint class.
+    def _get_registry(cls):
+        """Return _constraints for backward compatibility.
 
-        Args:
-            name: Constraint name as it appears in config.
-            constraint_class: CustomConstraint subclass.
+        This allows the parent class methods to work with _constraints dict.
         """
-        with cls._lock:
-            cls._constraints[name] = constraint_class
-        logger.debug(
-            "Registered constraint '%s' -> %s", name, constraint_class.__name__
-        )
+        return cls._constraints
 
-    @classmethod
-    def get(cls, name: str) -> Type[CustomConstraint]:
-        """Look up a constraint class by name.
-
-        Args:
-            name: Constraint name.
-
-        Returns:
-            CustomConstraint subclass.
-
-        Raises:
-            KeyError: If constraint is not registered.
-        """
-        with cls._lock:
-            if name not in cls._constraints:
-                raise KeyError(
-                    f"Unknown constraint '{name}'. "
-                    f"Available: {', '.join(cls._constraints.keys())}"
-                )
-            return cls._constraints[name]
-
-    @classmethod
-    def is_registered(cls, name: str) -> bool:
-        """Check if a constraint is registered.
-
-        Args:
-            name: Constraint name.
-
-        Returns:
-            True if constraint is registered, False otherwise.
-        """
-        with cls._lock:
-            return name in cls._constraints
+    # Note: register, get, is_registered, unregister inherited from GenericRegistry
+    # and work with _constraints via _get_registry()
 
     @classmethod
     def list_constraints(cls) -> List[str]:
-        """Return list of registered constraint names."""
-        return list(cls._constraints.keys())
+        """Return list of registered constraint names.
+
+        Alias for list_items() for backward compatibility.
+        """
+        return cls.list_items()

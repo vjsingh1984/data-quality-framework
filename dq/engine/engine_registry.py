@@ -13,8 +13,9 @@ from __future__ import annotations
 import importlib
 import logging
 import re
-import threading
 from typing import TYPE_CHECKING, Dict, Optional, Type
+
+from dq.utils.registry_base import GenericRegistry
 
 if TYPE_CHECKING:
     from dq.engine.dq_engine import DQEngine
@@ -24,36 +25,36 @@ logger = logging.getLogger(__name__)
 _ENGINE_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 
 
-class EngineRegistry:
-    """Registry for discovering and instantiating DQEngine subclasses."""
+class EngineRegistry(GenericRegistry["DQEngine"]):
+    """Registry for discovering and instantiating DQEngine subclasses.
 
-    _explicit: Dict[str, Type[DQEngine]] = {}
-    _lock = threading.Lock()
+    Inherits thread-safe registration and lookup from GenericRegistry.
+    Adds convention-based discovery and entry point loading.
+    """
+
+    _explicit: Dict[str, Type["DQEngine"]] = {}
 
     @classmethod
-    def register(cls, name: str, engine_class: Type[DQEngine]) -> None:
+    def _get_registry(cls):
+        """Return _explicit for backward compatibility.
+
+        The explicit registry contains manually registered engines.
+        Convention and entry point discovery are checked separately.
+        """
+        return cls._explicit
+
+    @classmethod
+    def register(cls, name: str, engine_class: Type["DQEngine"]) -> None:
         """Explicitly register an engine class.
 
         Args:
             name: Engine name (lowercase alphanumeric).
             engine_class: DQEngine subclass.
         """
-        with cls._lock:
-            cls._explicit[name.lower()] = engine_class
-        logger.debug("Registered engine '%s' -> %s", name, engine_class.__name__)
+        super().register(name, engine_class)
 
     @classmethod
-    def unregister(cls, name: str) -> None:
-        """Remove an explicitly registered engine.
-
-        Args:
-            name: Engine name to remove.
-        """
-        with cls._lock:
-            cls._explicit.pop(name.lower(), None)
-
-    @classmethod
-    def get_engine_class(cls, name: str) -> Type[DQEngine]:
+    def get_engine_class(cls, name: str) -> Type["DQEngine"]:
         """Look up an engine class by name.
 
         Tries in order:
@@ -80,10 +81,9 @@ class EngineRegistry:
             )
 
         # 1. Explicit registry
-        with cls._lock:
-            if name in cls._explicit:
-                logger.debug("Found engine '%s' in explicit registry", name)
-                return cls._explicit[name]
+        if cls.is_registered(name):
+            logger.debug("Found engine '%s' in explicit registry", name)
+            return super().get(name)
 
         # 2. Convention-based discovery
         engine_class = cls._try_convention_import(name)
@@ -100,12 +100,12 @@ class EngineRegistry:
         )
 
     @classmethod
-    def _try_convention_import(cls, name: str) -> Optional[Type[DQEngine]]:
+    def _try_convention_import(cls, name: str) -> Optional[Type["DQEngine"]]:
         """Try to import engine via convention: dq.engine.{name}.{name}_engine.
 
         The class name follows the convention: remove underscores, capitalize each word,
         and append 'Engine'. For example:
-        - "my_engine" -> "MyEngine"
+        - "my_engine" -> "MyEngineEngine"
         - "schema_validation" -> "SchemaValidationEngine"
         - "greatexpectations" -> "GreatexpectationsEngine"
 
@@ -154,7 +154,7 @@ class EngineRegistry:
             return None
 
     @classmethod
-    def _try_entry_points(cls, name: str) -> Optional[Type[DQEngine]]:
+    def _try_entry_points(cls, name: str) -> Optional[Type["DQEngine"]]:
         """Try to find engine via importlib.metadata entry points.
 
         Validates that the discovered class is a valid DQEngine subclass.
@@ -216,3 +216,5 @@ class EngineRegistry:
             Dict mapping engine names to class names.
         """
         return {name: klass.__name__ for name, klass in cls._explicit.items()}
+
+    # Note: unregister inherited from GenericRegistry and works with _explicit

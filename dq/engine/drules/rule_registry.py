@@ -5,9 +5,10 @@
 from __future__ import annotations
 
 import logging
-import threading
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Type
+
+from dq.utils.registry_base import GenericRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ class DRule(ABC):
         Raises:
             ConfigurationError: If config is invalid.
         """
+        pass
 
     @abstractmethod
     def evaluate(self, dataframe, config: dict) -> List[Dict[str, Any]]:
@@ -37,25 +39,25 @@ class DRule(ABC):
         Returns:
             List of metric dicts with ``check``, ``success``, ``details`` keys.
         """
+        pass
 
 
-class RuleRegistry:
-    """Registry for declarative rule types."""
+class RuleRegistry(GenericRegistry[DRule]):
+    """Registry for declarative rule types.
+
+    Supports external rule registration via ``register(name, cls)``.
+    Inherits thread-safe registration and lookup from GenericRegistry.
+    """
 
     _rules: Dict[str, Type[DRule]] = {}
-    _lock = threading.Lock()
 
     @classmethod
-    def register(cls, name: str, rule_class: Type[DRule]) -> None:
-        """Register a rule class.
+    def _get_registry(cls):
+        """Return _rules for backward compatibility.
 
-        Args:
-            name: Rule name as it appears in config.
-            rule_class: DRule subclass.
+        This allows the parent class methods to work with _rules dict.
         """
-        with cls._lock:
-            cls._rules[name] = rule_class
-        logger.debug("Registered rule '%s' -> %s", name, rule_class.__name__)
+        return cls._rules
 
     @classmethod
     def get(cls, name: str) -> Type[DRule]:
@@ -70,21 +72,21 @@ class RuleRegistry:
         Raises:
             KeyError: If rule is not registered.
         """
+        normalized_name = name.lower()
+        registry = cls._get_registry()
         with cls._lock:
-            if name not in cls._rules:
-                raise KeyError(
-                    f"Unknown rule type '{name}'. "
-                    f"Available: {', '.join(cls._rules.keys())}"
-                )
-            return cls._rules[name]
+            if normalized_name not in registry:
+                available = ", ".join(registry.keys())
+                raise KeyError(f"Unknown rule type '{name}'. Available: {available}")
+            return registry[normalized_name]
 
-    @classmethod
-    def unregister(cls, name: str) -> None:
-        """Remove a registered rule."""
-        with cls._lock:
-            cls._rules.pop(name, None)
+    # Note: register, unregister, is_registered inherited from GenericRegistry
+    # and work with _rules via _get_registry()
 
     @classmethod
     def list_rules(cls) -> List[str]:
-        """Return list of registered rule names."""
-        return list(cls._rules.keys())
+        """Return list of registered rule names.
+
+        Alias for list_items() for backward compatibility.
+        """
+        return cls.list_items()
