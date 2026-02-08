@@ -63,7 +63,7 @@ safety = "^3.0.0"               # Dependency security check
 
 [tool.poetry.scripts]
 dq-framework = "dq.cli:main"
-dq-validate = "dq.validate:main"
+dq-validate = "dq.config_validator:main"
 
 [build-system]
 requires = ["poetry-core"]

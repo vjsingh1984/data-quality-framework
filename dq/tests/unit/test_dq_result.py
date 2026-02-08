@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Unit tests for DQResult dataclass."""
-from dq.models import DQResult
+from dq.result_models import DQResult
 
 
 class TestDQResult:

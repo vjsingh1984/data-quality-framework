@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Data Quality Framework - Configuration-driven data quality for Apache Spark."""
-from dq.models import DQResult
+from dq.result_models import DQResult
 
 __all__ = ["DQFramework", "DQResult"]
 __version__ = "2.0.0"
