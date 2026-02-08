@@ -34,13 +34,16 @@ class SchemaValidationCheck:
         self._ref_cache = {}
         self._spark_session = None
 
-    def get_ref_cached_data(self, full_tablename, ref_column):
+    def get_ref_cached_data(self, table_name, ref_column):
         """
-        Fetch the distinct count and reference dataframe , cache the results to potentially avoid redeundant queries.
+        Fetch the distinct count and reference dataframe, cache the results to potentially avoid redundant queries.
+
         Args:
-        - ref_db : Reference Database for Foreign key constraint
-        - ref_table: Reference Table for Foreign key constraint
-        - ref_column : Reference Colun for Foreign key Constraint
+            table_name: Fully qualified reference table name.
+            ref_column: Reference column for foreign key constraint.
+
+        Returns:
+            Dictionary with cached data including reference DataFrame.
         """
         threshold_list_count = self._schema_config.get(
             constants.FK_THRESHOLD_COUNT_KEY,
@@ -49,11 +52,11 @@ class SchemaValidationCheck:
         use_list_check = self._schema_config.get(
             constants.FK_USE_LIST_KEY, True
         )
-        cache_key = f"{full_tablename}.{ref_column}"
+        cache_key = f"{full_table_name}.{ref_column}"
         if cache_key not in self._ref_cache:
             # Only calculate if cache key is missing
             ref_df = self._spark_session.sql(
-                f"SELECT {ref_column} AS {ref_column}_alias FROM {full_tablename}"
+                f"SELECT {ref_column} AS {ref_column}_alias FROM {full_table_name}"
             )
             distinct_count = ref_df.distinct().count()
             if use_list_check and distinct_count > threshold_list_count:
@@ -89,9 +92,9 @@ class SchemaValidationCheck:
                     f"Foreign key constraint at index {i} is missing required "
                     f"key(s): src_column, ref_table, and ref_column are all required."
                 )
-            ref_db = fk.get(constants.REF_DB, None)
-            full_tablename = self._get_fulltable(db=ref_db, tbl=ref_table)
-            cached_data = self.get_ref_cached_data(full_tablename, ref_column)
+            ref_database = fk.get(constants.REF_DB, None)
+            full_table_name = self._get_full_table_name(database=ref_database, table=ref_table)
+            cached_data = self.get_ref_cached_data(full_table_name, ref_column)
 
             if not (cached_data[constants.FK_USE_LIST_KEY]):
                 ref_df = cached_data["ref_df"]
@@ -125,9 +128,9 @@ class SchemaValidationCheck:
                     f"Foreign key constraint at index {i} is missing required "
                     f"key(s): src_column, ref_table, and ref_column are all required."
                 )
-            ref_db = fk.get(constants.REF_DB, None)
-            full_tablename = self._get_fulltable(db=ref_db, tbl=ref_table)
-            cached_data = self.get_ref_cached_data(full_tablename, ref_column)
+            ref_database = fk.get(constants.REF_DB, None)
+            full_table_name = self._get_full_table_name(database=ref_database, table=ref_table)
+            cached_data = self.get_ref_cached_data(full_table_name, ref_column)
 
             if cached_data[constants.FK_USE_LIST_KEY]:
                 ref_df = cached_data["ref_df"]
@@ -141,14 +144,14 @@ class SchemaValidationCheck:
                     column=src_column,
                     allowed_values=ref_values,
                     assertion=lambda k: k == 1.0,
-                    hint=f"{src_column} must exist in {full_tablename}.{ref_column}",
+                    hint=f"{src_column} must exist in {full_table_name}.{ref_column}",
                 )
             else:
                 check = check.satisfies(
                     columnCondition=f"{ref_column}_alias IS NOT NULL",
-                    constraintName=f"{src_column} refential integrity check against {full_tablename}.{ref_column}",
+                    constraintName=f"{src_column} refential integrity check against {full_table_name}.{ref_column}",
                     assertion=lambda k: k == 1.0,
-                    hint=f"{src_column} must exist in {full_tablename}.{ref_column}",
+                    hint=f"{src_column} must exist in {full_table_name}.{ref_column}",
                 )
 
         return check
@@ -464,10 +467,19 @@ class SchemaValidationCheck:
 
         return checks
 
-    def _get_fulltable(self, db: str, tbl: str):
-        if db and db.strip():
-            return f"{db}.{tbl}"
-        return tbl
+    def _get_full_table_name(self, database: str, table: str):
+        """Build fully qualified table name from database and table components.
+
+        Args:
+            database: Database/schema name (optional).
+            table: Table name.
+
+        Returns:
+            Fully qualified table name (e.g., "database.table") or just table name.
+        """
+        if database and database.strip():
+            return f"{database}.{table}"
+        return table
 
     def _fetch_table_schema(self, catalog_type):
         """Fetch table schema using the appropriate catalog provider.
