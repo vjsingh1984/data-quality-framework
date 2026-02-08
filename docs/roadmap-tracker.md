@@ -87,7 +87,6 @@
                               ┌─────────────────────────┐
                               │   Remaining Issues      │
                               ├─────────────────────────┤
-                              │ D2: Return type variance│
                               │ D3: Registry pattern    │
                               │ D4: SchemaVal-Deequ     │
                               │ V1-V6: Vision items     │
@@ -127,10 +126,10 @@ All implementation shortcomings (I1-I22) and API improvements (I16, D1) have bee
 **ID**: D2 / I20
 **Priority**: Medium
 **Category**: Design
-**Status**: **OPEN**
+**Status**: ✅ **COMPLETED** (2026-02-07)
 
 #### Description
-Different engines return metrics with inconsistent structure. This makes it difficult for consumers to process results uniformly.
+Different engines returned metrics with inconsistent structure. This made it difficult for consumers to process results uniformly.
 
 #### Current State Examples
 
@@ -281,11 +280,75 @@ for metric in metrics:
 - `dq/engine/drules/drules_engine.py` - Add normalization
 - `dq/engine/greatexpectations/greatexpectations_engine.py` - Add normalization
 
+#### Implementation Details
+
+**Added DQMetric dataclass:**
+```python
+@dataclass
+class DQMetric:
+    """Normalized metric returned by all data quality engines."""
+    check: str
+    constraint: str
+    success: bool
+    engine: str
+    timestamp_ms: int
+    dataset: str
+    details: Dict[str, Any] = field(default_factory=dict)
+    execution_time_ms: Optional[int] = None
+    assertion: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for backward compatibility."""
+        return asdict(self)
+
+    @classmethod
+    def time_ms(cls) -> int:
+        """Get current time in milliseconds since epoch."""
+        import time
+        return int(time.time() * 1000)
+```
+
+**Added helper methods to DQEngine:**
+```python
+def _get_engine_name(self) -> str:
+    """Get the engine name for metrics."""
+
+def _get_dataset_name(self) -> str:
+    """Get the dataset name from config."""
+
+def _create_metric(self, check, success, details, constraint=None,
+                   execution_time_ms=None, assertion=None) -> DQMetric:
+    """Create a normalized metric with common fields populated."""
+```
+
+**Updated all engines:**
+- Engines call `self._create_metric()` to create metrics with normalized fields
+- Convert to dict via `metric.to_dict()` for backward compatibility
+- Extract constraint from check name where needed
+
+**Files Modified:**
+- `dq/engine/dq_engine.py` - Added DQMetric dataclass and helper methods
+- `dq/engine/deequ/deequ_engine.py` - Use DQMetric for metrics
+- `dq/engine/custom/custom_engine.py` - Use DQMetric for metrics
+- `dq/engine/schemavalidation/schemavalidation_engine.py` - Use DQMetric for metrics
+- `dq/engine/drules/drules_engine.py` - Use DQMetric for metrics
+- `dq/engine/greatexpectations/greatexpectations_engine.py` - Use DQMetric for metrics
+- `dq/utils/constants.py` - Added DQ_DATASET constant
+- `dq/tests/unit/test_greatexpectations_unit.py` - Fixed tests to mock config
+
+#### Test Results
+All 173 unit tests pass
+
+#### Commit
+`c1042fc` - Implement D2: Return type variance with normalized DQMetric
+
 #### Estimated Effort
 2-3 days
 
 #### Dependencies
-- None (can be done independently)
+- None
+
+**Unblocks**: D4 (SchemaValidation-Deequ decoupling)
 
 ---
 
@@ -1206,6 +1269,7 @@ No native profiling capabilities. Users must manually:
 
 | Date | Change | Author |
 |------|--------|--------|
+| 2026-02-07 | Completed D2: Return Type Variance | Claude (Sonnet 4.5) |
 | 2026-02-07 | Completed D6: Config Validation Split | Claude (Sonnet 4.5) |
 | 2026-02-07 | Completed D8: CatalogFactory Extensibility | Claude (Sonnet 4.5) |
 | 2026-02-07 | Completed D7: Engine Lifecycle Hooks | Claude (Sonnet 4.5) |
