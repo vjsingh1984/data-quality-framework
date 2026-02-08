@@ -120,12 +120,15 @@ class EngineRegistry(GenericRegistry["DQEngine"]):
         # Handle compound words: split on underscore, capitalize each part
         if "_" in name:
             # "schema_validation" -> ["Schema", "Validation"] -> "SchemaValidationEngine"
-            class_name = "".join(word.capitalize() for word in name.split("_")) + "Engine"
+            class_name = (
+                "".join(word.capitalize() for word in name.split("_")) + "Engine"
+            )
         else:
             # Handle compound words without underscores using common patterns
             # "schemavalidation" -> "SchemaValidationEngine"
             # "greatexpectations" -> "GreatExpectationsEngine"
             from dq.utils.string_utils import split_compound_word
+
             words = split_compound_word(name)
             class_name = "".join(word.capitalize() for word in words) + "Engine"
 

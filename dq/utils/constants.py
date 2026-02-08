@@ -20,7 +20,7 @@ REF_COLUMN = "ref_column"
 SCHEMA = "schema"
 DATABASE_KEY = "database"
 TABLE_KEY = "table"
-SRC_COLUMN = "src_column"
+SOURCE_COLUMN = "source_column"
 DQ_REPOSITORY_METRICS = "metrics"
 DQ_REPOSITORY_VERIFICATIONS = "verifications"
 CATALOG_TYPE_KEY = "catalog_type"
@@ -67,9 +67,7 @@ def get_pydeequ_datatype_map():
 
 
 # Datatype mapping constants for schema validation
-PYDEEQU_DATATYPE_MAP = property(
-    lambda self: get_pydeequ_datatype_map()
-)
+PYDEEQU_DATATYPE_MAP = property(lambda self: get_pydeequ_datatype_map())
 
 CAST_SPARK_SQL_DATATYPE_MAP = {
     "DateType": "DATE",

@@ -64,8 +64,8 @@ def load_from_s3(bucket: str, key: str) -> str:
 
     session = boto3.session.Session()
     s3 = session.resource("s3")
-    res = s3.Object(bucket, key)
-    return res.get()["Body"].read().decode("utf-8")
+    s3_object = s3.Object(bucket, key)
+    return s3_object.get()["Body"].read().decode("utf-8")
 
 
 def load_from_adls(uri: str) -> str:

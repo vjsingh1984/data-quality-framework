@@ -21,12 +21,12 @@ def dqrule_schemavalidation_config():
                 unique_key_constraints = [["name","age"], ["name","email"]]
                 foreign_key_constraints = [
                     {
-                        src_column = "name"
+                        source_column = "name"
                         ref_table = "temp_users"
                         ref_column = "name"
                     },
                     {
-                        src_column = "email"
+                        source_column = "email"
                         ref_table = "temp_emails"
                         ref_column = "email"
                     }

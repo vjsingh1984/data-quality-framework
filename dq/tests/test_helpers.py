@@ -4,7 +4,7 @@
 """Shared test helper functions for reducing duplication across test files."""
 
 import json
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from pyhocon import ConfigTree
 from pyspark.sql import DataFrame
@@ -51,7 +51,9 @@ def assert_all_metrics_success(metrics: List[Dict[str, Any]]) -> None:
             print("Error in : " + json.dumps(metric, default=str))
             overallsuccess = False
 
-    assert overallsuccess, f"Some metrics failed: {[m for m in metrics if not m['success']]}"
+    assert (
+        overallsuccess
+    ), f"Some metrics failed: {[m for m in metrics if not m['success']]}"
 
 
 def assert_any_metric_failure(metrics: List[Dict[str, Any]]) -> None:
@@ -64,7 +66,9 @@ def assert_any_metric_failure(metrics: List[Dict[str, Any]]) -> None:
         AssertionError: If all metrics succeeded.
     """
     failed_metrics = [m for m in metrics if not m["success"]]
-    assert len(failed_metrics) > 0, "Expected at least one metric to fail, but all succeeded"
+    assert (
+        len(failed_metrics) > 0
+    ), "Expected at least one metric to fail, but all succeeded"
 
 
 def parse_schema_config(config_str: str) -> ConfigTree:

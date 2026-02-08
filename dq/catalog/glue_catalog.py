@@ -10,14 +10,14 @@ from dq.catalog.base import CatalogProvider
 logger = logging.getLogger(__name__)
 
 
-def _parse_glue_type(glue_type_str):
+def _parse_glue_type(glue_type_string):
     """Convert a Glue type string to a PySpark type instance.
 
     Handles basic types, decimal(precision,scale), char(n), varchar(n),
     and array/struct/map types by falling back to StringType.
 
     Args:
-        glue_type_str: Glue column type string (e.g., "string", "decimal(10,2)").
+        glue_type_string: Glue column type string (e.g., "string", "decimal(10,2)").
 
     Returns:
         PySpark DataType instance.
@@ -41,21 +41,21 @@ def _parse_glue_type(glue_type_str):
         VarcharType,
     )
 
-    glue_lower = glue_type_str.strip().lower()
+    glue_type_lower = glue_type_string.strip().lower()
 
     # Handle decimal(precision, scale)
-    decimal_match = re.match(r"decimal\((\d+),\s*(\d+)\)", glue_lower)
+    decimal_match = re.match(r"decimal\((\d+),\s*(\d+)\)", glue_type_lower)
     if decimal_match:
         precision = int(decimal_match.group(1))
         scale = int(decimal_match.group(2))
         return DecimalType(precision, scale)
 
     # Handle char(n) and varchar(n)
-    char_match = re.match(r"char\((\d+)\)", glue_lower)
+    char_match = re.match(r"char\((\d+)\)", glue_type_lower)
     if char_match:
         return CharType(int(char_match.group(1)))
 
-    varchar_match = re.match(r"varchar\((\d+)\)", glue_lower)
+    varchar_match = re.match(r"varchar\((\d+)\)", glue_type_lower)
     if varchar_match:
         return VarcharType(int(varchar_match.group(1)))
 
@@ -69,7 +69,7 @@ def _parse_glue_type(glue_type_str):
         "smallint": ShortType(),
         "short": ShortType(),
         "tinyint": ByteType(),
-        "byte": ByteType(),
+        "Byte": ByteType(),
         "float": FloatType(),
         "double": DoubleType(),
         "boolean": BooleanType(),
@@ -78,11 +78,13 @@ def _parse_glue_type(glue_type_str):
         "timestamp": TimestampType(),
     }
 
-    if glue_lower in type_map:
-        return type_map[glue_lower]
+    if glue_type_lower in type_map:
+        return type_map[glue_type_lower]
 
     # Fallback for complex types (array, struct, map)
-    logger.warning("Unmapped Glue type '%s', falling back to StringType", glue_type_str)
+    logger.warning(
+        "Unmapped Glue type '%s', falling back to StringType", glue_type_string
+    )
     return StringType()
 
 
@@ -303,7 +305,10 @@ class GlueCatalogProvider(CatalogProvider):
             # Glue does not track nullable per-column; default to True
             fields.append(
                 StructField(
-                    column_name, spark_type, nullable=True, metadata={"comment": comment}
+                    column_name,
+                    spark_type,
+                    nullable=True,
+                    metadata={"comment": comment},
                 )
             )
 

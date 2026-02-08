@@ -56,22 +56,28 @@ class DeequConstraintsBuilder:
             The file path that was written.
         """
         transform_suggestion = []
-        for cons in constraint_suggestions["constraint_suggestions"]:
-            s = cons["code_for_constraint"]
-            constraint = s[1 : s.index("(")]
+        for constraint in constraint_suggestions["constraint_suggestions"]:
+            code_string = constraint["code_for_constraint"]
+            constraint_name = code_string[1 : code_string.index("(")]
             assertion = ""
-            if "lambda" in s:
-                assertion = s[s.index("lambda") : s.index(",", s.index("lambda"))]
+            if "lambda" in code_string:
+                assertion = code_string[
+                    code_string.index("lambda") : code_string.index(
+                        ",", code_string.index("lambda")
+                    )
+                ]
             datatype = ""
-            if "hasDataType" in s:
+            if "hasDataType" in code_string:
                 datatype = str(
-                    cons["current_value"][cons["current_value"].index(":") + 1 :]
+                    constraint["current_value"][
+                        constraint["current_value"].index(":") + 1 :
+                    ]
                 ).strip()
             check_str = f"""{{
-                                alias = "{cons['constraint_name']}"
-                                column = "{cons['column_name']}"
+                                alias = "{constraint['constraint_name']}"
+                                column = "{constraint['column_name']}"
                                 level = "Warning"
-                                constraint = "{constraint}"
+                                constraint = "{constraint_name}"
                                 assertion = "{assertion}"
                                 datatype = "{datatype}"
                             }},"""
@@ -105,7 +111,7 @@ class DeequConstraintsBuilder:
         logger.info("Config file saved to: %s", file_name)
         return file_name
 
-    def run_dqrules_for_dataset(self, spark, df, constraints):
+    def run_dq_rules_for_dataset(self, spark, df, constraints):
         """Run Deequ validation rules built from constraint suggestions.
 
         Args:
@@ -137,22 +143,22 @@ class DeequConstraintsBuilder:
 
         # Apply each suggestion iteratively instead of using eval()
         for suggestion in constraints["constraint_suggestions"]:
-            code_str = suggestion["code_for_constraint"]
-            logger.debug("Applying constraint: %s", code_str)
+            constraint_code = suggestion["code_for_constraint"]
+            logger.debug("Applying constraint: %s", constraint_code)
             # code_for_constraint is like '.hasCompleteness("col", lambda x: x >= 0.9)'
             # We apply it iteratively on the check object
             try:
-                import ast as _ast
+                import ast as ast_module
 
                 # Parse and validate the expression before executing
-                full_expr = "check" + code_str
-                parsed = _ast.parse(full_expr, mode="eval")
+                full_expr = "check" + constraint_code
+                parsed = ast_module.parse(full_expr, mode="eval")
                 # Compile from validated AST with restricted builtins
                 compiled = compile(parsed, "<constraint_suggestion>", "eval")
                 check = eval(compiled, {"__builtins__": {}, "check": check})
             except Exception as e:
                 logger.warning(
-                    "Could not apply suggested constraint: %s (%s)", code_str, e
+                    "Could not apply suggested constraint: %s (%s)", constraint_code, e
                 )
 
         checked_constraints = VerificationSuite(spark).onData(df).addCheck(check).run()

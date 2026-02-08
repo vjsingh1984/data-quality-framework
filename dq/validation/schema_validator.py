@@ -162,7 +162,9 @@ class NativeSchemaValidator:
                 continue
             elif not nullable and schema_nullable:
                 # Schema allows nulls but config doesn't - need to check data
-                null_count = df.select(column_name).filter(f"{column_name} IS NULL").count()
+                null_count = (
+                    df.select(column_name).filter(f"{column_name} IS NULL").count()
+                )
 
                 success = null_count == 0
                 summary.add_result(

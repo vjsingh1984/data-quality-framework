@@ -3,9 +3,7 @@
 
 """String utilities for naming conventions."""
 
-import re
 from typing import List
-
 
 # Common compound word patterns for framework names
 _COMPOUND_WORD_PATTERNS = {
@@ -63,7 +61,7 @@ def split_compound_word(word: str) -> List[str]:
             # Find prefix
             if remaining.startswith(pattern):
                 parts_list.extend(parts)
-                remaining = remaining[len(pattern):]
+                remaining = remaining[len(pattern) :]
             else:
                 # Check if pattern is in the middle
                 idx = remaining.find(pattern)
@@ -72,7 +70,7 @@ def split_compound_word(word: str) -> List[str]:
                     remaining = remaining[idx:]
 
                 parts_list.extend(parts)
-                remaining = remaining[len(pattern):]
+                remaining = remaining[len(pattern) :]
 
             # Handle remaining suffix
             if remaining:

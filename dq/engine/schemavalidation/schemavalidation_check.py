@@ -49,21 +49,19 @@ class SchemaValidationCheck:
             constants.FK_THRESHOLD_COUNT_KEY,
             constants.FK_THRESHOLD_COUNT_VALUE,
         )
-        use_list_check = self._schema_config.get(
-            constants.FK_USE_LIST_KEY, True
-        )
-        cache_key = f"{full_table_name}.{ref_column}"
+        use_list_check = self._schema_config.get(constants.FK_USE_LIST_KEY, True)
+        cache_key = f"{table_name}.{ref_column}"
         if cache_key not in self._ref_cache:
             # Only calculate if cache key is missing
-            ref_df = self._spark_session.sql(
-                f"SELECT {ref_column} AS {ref_column}_alias FROM {full_table_name}"
+            reference_dataframe = self._spark_session.sql(
+                f"SELECT {ref_column} AS {ref_column}_alias FROM {table_name}"
             )
-            distinct_count = ref_df.distinct().count()
+            distinct_count = reference_dataframe.distinct().count()
             if use_list_check and distinct_count > threshold_list_count:
                 use_list_check = False
 
             self._ref_cache[cache_key] = {
-                "ref_df": ref_df,
+                "ref_df": reference_dataframe,
                 constants.FK_USE_LIST_KEY: use_list_check,
                 "distinct_count": distinct_count,
             }
@@ -81,26 +79,27 @@ class SchemaValidationCheck:
         """
 
         joined_df = df
-        for i, fk in enumerate(
-            self._schema_config.get(constants.FK_CONSTRAINTS, [])
-        ):
-            src_column = fk.get(constants.SRC_COLUMN, None)
+        for i, fk in enumerate(self._schema_config.get(constants.FK_CONSTRAINTS, [])):
+            source_column = fk.get(constants.SOURCE_COLUMN, None)
             ref_table = fk.get(constants.REF_TABLE, None)
             ref_column = fk.get(constants.REF_COLUMN, None)
-            if not all([src_column, ref_table, ref_column]):
+            if not all([source_column, ref_table, ref_column]):
                 raise ValueError(
                     f"Foreign key constraint at index {i} is missing required "
-                    f"key(s): src_column, ref_table, and ref_column are all required."
+                    f"key(s): source_column, ref_table, and ref_column are all required."
                 )
             ref_database = fk.get(constants.REF_DB, None)
-            full_table_name = self._get_full_table_name(database=ref_database, table=ref_table)
+            full_table_name = self._get_full_table_name(
+                database=ref_database, table=ref_table
+            )
             cached_data = self.get_ref_cached_data(full_table_name, ref_column)
 
             if not (cached_data[constants.FK_USE_LIST_KEY]):
-                ref_df = cached_data["ref_df"]
+                reference_dataframe = cached_data["ref_df"]
                 joined_df = joined_df.join(
-                    ref_df,
-                    joined_df[src_column] == ref_df[f"{ref_column}_alias"],
+                    reference_dataframe,
+                    joined_df[source_column]
+                    == reference_dataframe[f"{ref_column}_alias"],
                     "left_outer",
                 )
 
@@ -117,46 +116,46 @@ class SchemaValidationCheck:
         Returns:
         - The modified check object with foreign key constraints applied.
         """
-        for i, fk in enumerate(
-            self._schema_config.get(constants.FK_CONSTRAINTS, [])
-        ):
-            src_column = fk.get(constants.SRC_COLUMN, None)
+        for i, fk in enumerate(self._schema_config.get(constants.FK_CONSTRAINTS, [])):
+            source_column = fk.get(constants.SOURCE_COLUMN, None)
             ref_table = fk.get(constants.REF_TABLE, None)
             ref_column = fk.get(constants.REF_COLUMN, None)
-            if not all([src_column, ref_table, ref_column]):
+            if not all([source_column, ref_table, ref_column]):
                 raise ValueError(
                     f"Foreign key constraint at index {i} is missing required "
-                    f"key(s): src_column, ref_table, and ref_column are all required."
+                    f"key(s): source_column, ref_table, and ref_column are all required."
                 )
             ref_database = fk.get(constants.REF_DB, None)
-            full_table_name = self._get_full_table_name(database=ref_database, table=ref_table)
+            full_table_name = self._get_full_table_name(
+                database=ref_database, table=ref_table
+            )
             cached_data = self.get_ref_cached_data(full_table_name, ref_column)
 
             if cached_data[constants.FK_USE_LIST_KEY]:
-                ref_df = cached_data["ref_df"]
+                reference_dataframe = cached_data["ref_df"]
                 ref_values = (
-                    ref_df.select(f"{ref_column}_alias")
+                    reference_dataframe.select(f"{ref_column}_alias")
                     .distinct()
                     .rdd.flatMap(lambda r: [str(r[0])])
                     .collect()
                 )
                 check = check.isContainedIn(
-                    column=src_column,
+                    column=source_column,
                     allowed_values=ref_values,
                     assertion=lambda k: k == 1.0,
-                    hint=f"{src_column} must exist in {full_table_name}.{ref_column}",
+                    hint=f"{source_column} must exist in {full_table_name}.{ref_column}",
                 )
             else:
                 check = check.satisfies(
                     columnCondition=f"{ref_column}_alias IS NOT NULL",
-                    constraintName=f"{src_column} refential integrity check against {full_table_name}.{ref_column}",
+                    constraint_name=f"{source_column} refential integrity check against {full_table_name}.{ref_column}",
                     assertion=lambda k: k == 1.0,
-                    hint=f"{src_column} must exist in {full_table_name}.{ref_column}",
+                    hint=f"{source_column} must exist in {full_table_name}.{ref_column}",
                 )
 
         return check
 
-    def _apply_catalog_datatype_checks(self, checks, tableSchema):
+    def _apply_catalog_datatype_checks(self, checks, table_schema):
         """Apply datatype checks for catalog-fetched schemas (Unity, Glue, Hive).
 
         For non-Spark catalog types, the schema is fetched from the external
@@ -167,17 +166,15 @@ class SchemaValidationCheck:
 
         Args:
             checks: Check object (single_check_mode=True) or list of checks.
-            tableSchema: pyspark.sql.types.StructType from the catalog.
+            table_schema: pyspark.sql.types.StructType from the catalog.
 
         Returns:
             Modified checks with all datatype constraints applied.
         """
-        return self._apply_spark_datatype_checks(checks, tableSchema)
+        return self._apply_spark_datatype_checks(checks, table_schema)
 
-    def _get_typeofcheck_data_type(self, data_type, parameters):
-        lookupvalue = constants.TYPEOF_DATATYPE_MAP.get(
-            data_type, "unknown"
-        )
+    def _get_typeof_check_data_type(self, data_type, parameters):
+        lookupvalue = constants.TYPEOF_DATATYPE_MAP.get(data_type, "unknown")
         if "decimal" == lookupvalue:
             precision, scale = parameters
             return f"{lookupvalue}({precision},{scale})"
@@ -225,9 +222,9 @@ class SchemaValidationCheck:
         parameters,
         nullable,
         override,
-        pydeequ_map,
-        assertion_lambda,
-        hint_expr,
+        pydeequ_datatype_map,
+        assertion,
+        hint_message,
     ):
         """Apply PyDeequ-native datatype checks, with optional override pattern.
 
@@ -237,26 +234,19 @@ class SchemaValidationCheck:
         Returns:
             Updated checks.
         """
-        if (
-            override
-            and constants.OVERRIDE_CONFIG_PATTERN_KEY in override
-        ):
-            pattern_regex = override.get(
-                constants.OVERRIDE_CONFIG_PATTERN_KEY
-            )
+        if override and constants.OVERRIDE_CONFIG_PATTERN_KEY in override:
+            pattern_regex = override.get(constants.OVERRIDE_CONFIG_PATTERN_KEY)
             checks = self._add_constraint(
                 checks,
                 "hasPattern",
                 description="Schema Validation Override Check",
                 column=column_name,
                 pattern=pattern_regex,
-                assertion=assertion_lambda,
+                assertion=assertion,
                 name=f"override check for column {column_name}",
-                hint=f"{hint_expr}. Pattern={pattern_regex}",
+                hint=f"{hint_message}. Pattern={pattern_regex}",
             )
-            if override.get(
-                constants.OVERRIDE_CONFIG_REPLACE_KEY, True
-            ):
+            if override.get(constants.OVERRIDE_CONFIG_REPLACE_KEY, True):
                 # Pattern replaces the datatype check entirely
                 return checks
             # Pattern is applied on top of datatype check — fall through
@@ -267,9 +257,9 @@ class SchemaValidationCheck:
             data_type,
             parameters,
             nullable,
-            pydeequ_map,
-            assertion_lambda,
-            hint_expr,
+            pydeequ_datatype_map,
+            assertion,
+            hint_message,
         )
         return checks
 
@@ -280,32 +270,32 @@ class SchemaValidationCheck:
         data_type,
         parameters,
         nullable,
-        pydeequ_map,
-        assertion_lambda,
-        hint_expr,
+        pydeequ_datatype_map,
+        assertion,
+        hint_message,
     ):
         """Dispatch to hasDataType (non-nullable) or typeof satisfies (nullable)."""
         if not nullable:
-            mapped_constrainable_datatype = pydeequ_map.get(data_type)
+            mapped_constrainable_datatype = pydeequ_datatype_map.get(data_type)
             checks = self._add_constraint(
                 checks,
                 "hasDataType",
                 column=column_name,
                 datatype=mapped_constrainable_datatype,
-                assertion=assertion_lambda,
-                hint=hint_expr,
+                assertion=assertion,
+                hint=hint_message,
             )
         else:
-            typeofcheck_data_type = self._get_typeofcheck_data_type(
+            typeof_check_data_type = self._get_typeof_check_data_type(
                 data_type, parameters
             )
             checks = self._add_constraint(
                 checks,
                 "satisfies",
-                columnCondition=f"{column_name} is NULL OR typeof({column_name}) = '{typeofcheck_data_type}'",
-                constraintName=f"column[{column_name}] constraint for datatype[{data_type}] with nullable[{nullable}]",
-                assertion=assertion_lambda,
-                hint=hint_expr,
+                columnCondition=f"{column_name} is NULL OR typeof({column_name}) = '{typeof_check_data_type}'",
+                constraint_name=f"column[{column_name}] constraint for datatype[{data_type}] with nullable[{nullable}]",
+                assertion=assertion,
+                hint=hint_message,
             )
         return checks
 
@@ -315,27 +305,23 @@ class SchemaValidationCheck:
         column_name,
         data_type,
         nullable,
-        assertion_lambda,
-        hint_expr,
+        assertion,
+        hint_message,
     ):
         """Apply CAST-based datatype check for types not in the PyDeequ map."""
-        cast_sparksql_type = constants.CAST_SPARK_SQL_DATATYPE_MAP.get(
-            data_type
-        )
+        target_spark_type = constants.CAST_SPARK_SQL_DATATYPE_MAP.get(data_type)
         if not nullable:
-            cast_datatype_expr = (
-                f"CAST({column_name} AS {cast_sparksql_type}) IS NOT NULL"
-            )
+            cast_expression = f"CAST({column_name} AS {target_spark_type}) IS NOT NULL"
         else:
-            cast_datatype_expr = f"{column_name} is NULL OR CAST({column_name} AS {cast_sparksql_type}) IS NOT NULL"
+            cast_expression = f"{column_name} is NULL OR CAST({column_name} AS {target_spark_type}) IS NOT NULL"
         checks = self._add_constraint(
             checks,
             "satisfies",
             description="Schema Validation Cast Check",
-            columnCondition=cast_datatype_expr,
-            constraintName=f"column[{column_name}] constaint for datatype[{cast_sparksql_type}] AND nullable[{nullable}]",
-            assertion=assertion_lambda,
-            hint=hint_expr,
+            columnCondition=cast_expression,
+            constraint_name=f"column[{column_name}] constraint for datatype[{target_spark_type}] AND nullable[{nullable}]",
+            assertion=assertion,
+            hint=hint_message,
         )
         return checks
 
@@ -346,8 +332,8 @@ class SchemaValidationCheck:
         data_type,
         parameters,
         nullable,
-        assertion_lambda,
-        hint_expr,
+        assertion,
+        hint_message,
     ):
         """Apply CharType/VarcharType max-length or DecimalType precision checks."""
         if not parameters:
@@ -359,7 +345,7 @@ class SchemaValidationCheck:
                 description="Schema Validation Max Length Check",
                 column=column_name,
                 assertion=lambda l: l <= parameters[0],
-                hint=hint_expr,
+                hint=hint_message,
             )
         elif data_type == "DecimalType":
             precision, scale = parameters
@@ -374,13 +360,13 @@ class SchemaValidationCheck:
                 "satisfies",
                 description="Schema Validation Decimal Type Precision, Scale Check",
                 columnCondition=cast_decimal_expr,
-                constraintName=f"field[{column_name}] constaint for specific[DECIMAL({precision},{scale})] AND nullable[{nullable}]",
-                assertion=assertion_lambda,
-                hint=hint_expr,
+                constraint_name=f"field[{column_name}] constraint for specific[DECIMAL({precision},{scale})] AND nullable[{nullable}]",
+                assertion=assertion,
+                hint=hint_message,
             )
         return checks
 
-    def _apply_spark_datatype_checks(self, checks, tableSchema):
+    def _apply_spark_datatype_checks(self, checks, table_schema):
         """Apply schema datatype checks for each column in the table schema.
 
         Iterates through the schema fields and applies PyDeequ-native, CAST-based,
@@ -389,25 +375,25 @@ class SchemaValidationCheck:
 
         Args:
             checks: Check object (single_check_mode=True) or list of checks.
-            tableSchema: pyspark.sql.types.StructType from the DataFrame.
+            table_schema: pyspark.sql.types.StructType from the DataFrame.
 
         Returns:
             Updated checks with all datatype constraints applied.
         """
-        assertion_lambda = lambda x: x == 1.0
-        pydeequ_map = constants.get_pydeequ_datatype_map()
-        not_null_contraints = self._schema_config.get(
+        assertion = lambda x: x == 1.0
+        pydeequ_datatype_map = constants.get_pydeequ_datatype_map()
+        not_null_constraints = self._schema_config.get(
             constants.NOT_NULL_COLUMNS_KEY, []
         )
 
-        for field in tableSchema.fields:
+        for field in table_schema.fields:
             column_name = field.name
             field_data_type = field.dataType
             nullable = field.nullable
             if nullable:
-                nullable = column_name not in not_null_contraints
+                nullable = column_name not in not_null_constraints
 
-            hint_expr = f"column[{column_name}] must be datatype[{field_data_type}] AND nullable[{nullable}]"
+            hint_message = f"column[{column_name}] must be datatype[{field_data_type}] AND nullable[{nullable}]"
             data_type, parameters = self._extract_basetype_and_length(
                 datatype=str(field_data_type)
             )
@@ -415,15 +401,13 @@ class SchemaValidationCheck:
             override = next(
                 (
                     o
-                    for o in self._schema_config.get(
-                        constants.OVERRIDE_KEY, []
-                    )
+                    for o in self._schema_config.get(constants.OVERRIDE_KEY, [])
                     if column_name == o["column"]
                 ),
                 None,
             )
 
-            if data_type in pydeequ_map:
+            if data_type in pydeequ_datatype_map:
                 checks = self._apply_pydeequ_datatype(
                     checks,
                     column_name,
@@ -431,9 +415,9 @@ class SchemaValidationCheck:
                     parameters,
                     nullable,
                     override,
-                    pydeequ_map,
-                    assertion_lambda,
-                    hint_expr,
+                    pydeequ_datatype_map,
+                    assertion,
+                    hint_message,
                 )
             elif data_type in constants.CAST_SPARK_SQL_DATATYPE_MAP:
                 checks = self._apply_cast_datatype(
@@ -441,8 +425,8 @@ class SchemaValidationCheck:
                     column_name,
                     data_type,
                     nullable,
-                    assertion_lambda,
-                    hint_expr,
+                    assertion,
+                    hint_message,
                 )
             else:
                 raise ValueError(f"Error: Unknown {data_type}")
@@ -453,8 +437,8 @@ class SchemaValidationCheck:
                 data_type,
                 parameters,
                 nullable,
-                assertion_lambda,
-                hint_expr,
+                assertion,
+                hint_message,
             )
 
             if not nullable:
@@ -510,9 +494,7 @@ class SchemaValidationCheck:
                 f"Supported types: {', '.join(supported_types)}"
             )
 
-        database = self._schema_config.get(
-            constants.DATABASE_KEY, None
-        )
+        database = self._schema_config.get(constants.DATABASE_KEY, None)
         table = self._schema_config.get(constants.TABLE_KEY)
         catalog_name = self._schema_config.get("catalog", None)
 
@@ -557,10 +539,10 @@ class SchemaValidationCheck:
             constants.CATALOG_TYPE_KEY,
             constants.CATALOG_TYPE_SPARK,
         )
-        tableSchema = self._fetch_table_schema(catalog_type)
+        table_schema = self._fetch_table_schema(catalog_type)
         if catalog_type == constants.CATALOG_TYPE_SPARK:
             checks = self._apply_spark_datatype_checks(
-                checks=checks, tableSchema=tableSchema
+                checks=checks, table_schema=table_schema
             )
         elif catalog_type in [
             constants.CATALOG_TYPE_GLUE,
@@ -568,13 +550,11 @@ class SchemaValidationCheck:
             constants.CATALOG_TYPE_HIVE,
         ]:
             checks = self._apply_catalog_datatype_checks(
-                checks=checks, tableSchema=tableSchema
+                checks=checks, table_schema=table_schema
             )
 
         # Apply multi-column UNIQUE constraints
-        unique_constraints = self._schema_config.get(
-            constants.UNIQUE_CONSTRAINTS, []
-        )
+        unique_constraints = self._schema_config.get(constants.UNIQUE_CONSTRAINTS, [])
         if unique_constraints:
             for unique_set in unique_constraints:
                 if self._single_check_mode:
@@ -595,9 +575,7 @@ class SchemaValidationCheck:
                             "Error: Unique Constraint Check failure",
                         )
                     )
-        foreign_key_constraints = self._schema_config.get(
-            constants.FK_CONSTRAINTS, []
-        )
+        foreign_key_constraints = self._schema_config.get(constants.FK_CONSTRAINTS, [])
         if foreign_key_constraints:
             if self._single_check_mode:
                 checks = self.create_foreign_key_checks(checks, df)

@@ -3,6 +3,7 @@
 
 """Tests for UNIQUE constraint validation in schema validation."""
 
+
 import json
 
 import pytest
@@ -14,10 +15,12 @@ from pyspark.sql.types import (
     StructType,
 )
 
+from dq.engine.schemavalidation.schemavalidation_engine import (
+    SchemaValidationEngine,
+)
 from dq.tests.test_helpers import (
     apply_schema_validation,
     assert_all_metrics_success,
-    assert_any_metric_failure,
 )
 
 
@@ -275,3 +278,41 @@ def test_unique_constraint_composite_key_multiple_check_mode_failure(spark):
     assert False == process_schemavalidation_failure(
         spark, df, schema_config
     ), "Atleast one metric should have failed."
+
+
+def process_schemavalidation_success(spark, df, config):
+    # Initialize Schema Validation Engine with single_check_mode = False for granular reporting
+    schema_validation_engine = SchemaValidationEngine(config)
+    df.createOrReplaceTempView("temp_data_table")
+    # Apply Schema Validation including multi-column unique constraints
+    summary_metrics = schema_validation_engine.apply(df, repository=None)
+    overallsuccess = True
+    for metric in summary_metrics:
+        print(json.dumps(metric, indent=2))
+        # assert metric['success'] == True , f"{metric} failed."
+        if not (metric["success"]):
+            print("Error in : " + json.dumps(metric))
+            overallsuccess = False
+    if not overallsuccess:
+        print("dataframe\n")
+        df.show()
+        print("schema\n")
+        df.printSchema()
+        print("summarymetric\n")
+        print(json.dumps(summary_metrics, indent=2))
+    return overallsuccess
+
+
+def process_schemavalidation_failure(spark, df, config):
+    # Initialize Schema Validation Engine with single_check_mode = False for granular reporting
+    schema_validation_engine = SchemaValidationEngine(config)
+    df.createOrReplaceTempView("temp_data_table")
+    # Apply Schema Validation including multi-column unique constraints
+    summary_metrics = schema_validation_engine.apply(df, repository=None)
+    overallsuccess = True
+    for metric in summary_metrics:
+        if not (metric["success"]):
+            print("Error in : " + json.dumps(metric))
+            overallsuccess = False
+
+    return overallsuccess

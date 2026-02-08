@@ -41,7 +41,7 @@ def list_check_true_single_check_mode_schemavalidation_config():
             catalog_type = spark
             foreign_key_constraints=[
                 {
-                    src_column      = age
+                    source_column      = age
                     ref_table       = temp_users
                     ref_column      = age
                     use_list_check  = True
@@ -65,7 +65,7 @@ def list_check_false_single_check_mode_schemavalidation_config():
             catalog_type = spark
             foreign_key_constraints=[
                 {
-                    src_column      = age
+                    source_column      = age
                     ref_table       = temp_users
                     ref_column      = age
                     use_list_check  = False
@@ -89,7 +89,7 @@ def list_check_true_multiple_check_mode_schemavalidation_config():
             catalog_type = spark
             foreign_key_constraints=[
                 {
-                    src_column      = age
+                    source_column      = age
                     ref_table       = temp_users
                     ref_column      = age
                     use_list_check  = True
@@ -113,7 +113,7 @@ def list_check_false_multiple_check_mode_schemavalidation_config():
             catalog_type = spark
             foreign_key_constraints=[
                 {
-                    src_column      = age
+                    source_column      = age
                     ref_table       = temp_users
                     ref_column      = age
                     use_list_check  = False

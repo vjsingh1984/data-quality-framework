@@ -185,18 +185,18 @@ def single_schemavalidation_config():
             foreign_key_constraints=[
                
                 {
-                    src_column = name
+                    source_column = name
                     ref_table = temp_users
                     ref_column = name
                     use_list_check = True  # Explicit override (will be ignored if row count > threshold)
                 },
                 {
-                    src_column = signup_date
+                    source_column = signup_date
                     ref_table = temp_signup_dates
                     ref_column = signup_date
                 },
                 {
-                    src_column = age
+                    source_column = age
                     ref_table = temp_users
                     ref_column = age
                 }

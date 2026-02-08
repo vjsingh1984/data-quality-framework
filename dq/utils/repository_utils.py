@@ -4,9 +4,7 @@
 import os
 
 
-def save_to_repository(
-    repoconfig, df, metric_type_suffix, result_timestamp_ms
-):
+def save_to_repository(repoconfig, df, metric_type_suffix, result_timestamp_ms):
     """
     Saves DataFrame to configured repository (file system or catalog).
 
@@ -31,9 +29,7 @@ def save_to_repository(
     if format not in ["parquet", "csv", "json", "delta", "orc"]:
         raise ValueError("Invalid format specified in the configuration.")
 
-    partition_year = F.year(
-        F.from_unixtime(F.lit(result_timestamp_ms / 1000))
-    )
+    partition_year = F.year(F.from_unixtime(F.lit(result_timestamp_ms / 1000)))
     enriched_df = (
         df.withColumn("dqts", F.lit(result_timestamp_ms))
         .withColumn("dataset", F.lit(partition_dataset))
@@ -67,15 +63,13 @@ def save_to_repository(
                             f"'database.table' format, got {len(parts)} part(s)."
                         )
                     dbname, tabname = parts
-                    table_exists = (
-                        df.sparkSession._jsparkSession.catalog().tableExists(
-                            dbname, tabname
-                        )
+                    table_exists = df.sparkSession._jsparkSession.catalog().tableExists(
+                        dbname, tabname
                     )
                     if table_exists:
-                        enriched_df.coalesce(1).write.mode("append").format(format).option(
-                            "mergeSchema", "true"
-                        ).insertInto(table_with_suffix)
+                        enriched_df.coalesce(1).write.mode("append").format(
+                            format
+                        ).option("mergeSchema", "true").insertInto(table_with_suffix)
                     else:
                         enriched_df.coalesce(1).write.mode("overwrite").format(
                             format
