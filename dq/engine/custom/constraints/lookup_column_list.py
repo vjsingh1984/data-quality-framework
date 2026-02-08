@@ -45,8 +45,10 @@ class LookupColumnList(CustomConstraint):
         if ref_columns and not _SQL_IDENTIFIER.match(ref_columns):
             raise ValueError(f"Invalid reference column name: '{ref_columns}'")
 
-        df_ref = spark_session.sql(f"SELECT {ref_columns} FROM {ref_table}")
-        column_name_list = df_ref.rdd.flatMap(lambda x: x).collect()
+        reference_dataframe = spark_session.sql(
+            f"SELECT {ref_columns} FROM {ref_table}"
+        )
+        column_name_list = reference_dataframe.rdd.flatMap(lambda x: x).collect()
         column_list = list(map(str, column_name_list))
 
         if source == "timeSeries":
@@ -72,7 +74,7 @@ class LookupColumnList(CustomConstraint):
                         "Success",
                         f"{constraint}  for {column} {source}",
                         "Success",
-                        "Column found in the ref table",
+                        "Column found in the reference table",
                     ]
                 )
             else:
@@ -91,7 +93,7 @@ class LookupColumnList(CustomConstraint):
                         "Failure",
                         f"{constraint}  for {column} {source}",
                         "Failure",
-                        "Column not found in the ref table",
+                        "Column not found in the reference table",
                     ]
                 )
 
