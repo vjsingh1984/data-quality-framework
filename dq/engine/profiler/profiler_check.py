@@ -4,13 +4,25 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     from pyspark.sql import DataFrame
 
 # Import Spark functions for runtime use
 from pyspark.sql import functions as F
+
+from dq.engine.profiler.profiler_results import (
+    ColumnProfile,
+    DateStatistics,
+    GeneralStatistics,
+    NumericStatistics,
+    ProfileResult,
+    RuleSuggestion,
+    StringStatistics,
+    UniqueValueStatistics,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,74 +57,80 @@ class ProfilerCheck:
         self._include_correlation = include_correlation
         self._max_unique_values = max_unique_values
 
-    def profile_dataframe(self, dataframe: DataFrame) -> Dict[str, Any]:
+    def profile_dataframe(
+        self, dataframe: DataFrame, dataframe_name: str = "unknown"
+    ) -> ProfileResult:
         """Profile a DataFrame and return analysis results.
 
         Args:
             dataframe: Spark DataFrame to profile.
+            dataframe_name: Name of the DataFrame being profiled.
 
         Returns:
-            Dictionary containing profiling metrics organized by category:
-            - general: Overall statistics (row_count, column_count, etc.)
-            - columns: Per-column statistics and analysis
-            - correlations: Correlation matrix (if requested)
-            - suggestions: Rule suggestions based on profile (if requested)
+            ProfileResult containing profiling metrics organized by category.
         """
-        profile = {
-            "general": self._profile_general(dataframe),
-            "columns": self._profile_columns(dataframe),
-        }
+        general_stats = self._profile_general(dataframe)
+        columns_profile = self._profile_columns(dataframe)
 
+        correlations = None
         # Add correlations for advanced or explicitly requested profiling
         if self._profile_type in ("advanced",) or self._include_correlation:
-            profile["correlations"] = self._profile_correlations(dataframe)
-
-        # Add advanced features for advanced profile type
-        if self._profile_type == "advanced":
-            profile["distributions"] = self._profile_distributions(dataframe)
-            profile["outliers"] = self._detect_outliers(dataframe)
+            correlations = self._profile_correlations(dataframe)
 
         # Generate rule suggestions
-        profile["suggestions"] = self._generate_suggestions(dataframe, profile)
+        profile_dict = {
+            "general": general_stats,
+            "columns": columns_profile,
+        }
+        suggestions = self._generate_suggestions(dataframe, profile_dict)
 
-        return profile
+        return ProfileResult(
+            timestamp=datetime.now(),
+            dataframe_name=dataframe_name,
+            general=general_stats,
+            columns=columns_profile,
+            correlations=correlations,
+            suggestions=suggestions,
+            profile_type=self._profile_type,
+        )
 
-    def _profile_general(self, dataframe: DataFrame) -> Dict[str, Any]:
+    def _profile_general(self, dataframe: DataFrame) -> GeneralStatistics:
         """Generate general dataset statistics.
 
         Args:
             dataframe: DataFrame to analyze.
 
         Returns:
-            Dictionary with general statistics.
+            GeneralStatistics object with general statistics.
         """
         row_count = dataframe.count()
         column_count = len(dataframe.columns)
 
         # Get schema information
         schema = dataframe.schema
-        column_names = schema.names
+        column_names = list(schema.names)
         column_types = [str(field.dataType) for field in schema.fields]
 
-        return {
-            "row_count": row_count,
-            "column_count": column_count,
-            "columns": column_names,
-            "schema": {name: dtype for name, dtype in zip(column_names, column_types)},
-            "size_bytes": row_count
+        return GeneralStatistics(
+            row_count=row_count,
+            column_count=column_count,
+            columns=column_names,
+            schema={name: dtype for name, dtype in zip(column_names, column_types)},
+            size_bytes=row_count
             * sum(self._estimate_size(dtype) for dtype in column_types),
-        }
+        )
 
-    def _profile_columns(self, dataframe: DataFrame) -> Dict[str, Dict[str, Any]]:
+    def _profile_columns(self, dataframe: DataFrame) -> Dict[str, ColumnProfile]:
         """Generate per-column profiling statistics.
 
         Args:
             dataframe: DataFrame to analyze.
 
         Returns:
-            Dictionary mapping column names to their profiles.
+            Dictionary mapping column names to ColumnProfile objects.
         """
-        columns_profile = {}
+        columns_profile: Dict[str, ColumnProfile] = {}
+        total_count = dataframe.count()
 
         for field in dataframe.schema.fields:
             col_name = field.name
@@ -120,35 +138,42 @@ class ProfilerCheck:
 
             # Get null count and percentage
             null_count = dataframe.where(F.col(col_name).isNull()).count()
-            total_count = dataframe.count()
             null_percentage = (null_count / total_count * 100) if total_count > 0 else 0
 
-            column_profile = {
-                "data_type": col_type,
-                "nullable": field.nullable,
-                "null_count": null_count,
-                "null_percentage": null_percentage,
-            }
+            numeric_stats: Optional[NumericStatistics] = None
+            string_stats: Optional[StringStatistics] = None
+            date_stats: Optional[DateStatistics] = None
+            unique_value_stats: Optional[UniqueValueStatistics] = None
 
             # Add type-specific statistics
             if self._is_numeric_type(col_type):
-                column_profile.update(self._profile_numeric_column(dataframe, col_name))
+                numeric_stats = self._profile_numeric_column(dataframe, col_name)
             elif self._is_string_type(col_type):
-                column_profile.update(self._profile_string_column(dataframe, col_name))
+                string_stats = self._profile_string_column(dataframe, col_name)
             elif self._is_date_type(col_type):
-                column_profile.update(self._profile_date_column(dataframe, col_name))
+                date_stats = self._profile_date_column(dataframe, col_name)
 
             # Add unique/distinct analysis for comprehensive/advanced
             if self._profile_type in ("comprehensive", "advanced"):
-                column_profile.update(self._profile_unique_values(dataframe, col_name))
+                unique_value_stats = self._profile_unique_values(dataframe, col_name)
 
-            columns_profile[col_name] = column_profile
+            columns_profile[col_name] = ColumnProfile(
+                name=col_name,
+                data_type=col_type,
+                nullable=field.nullable,
+                null_count=null_count,
+                null_percentage=null_percentage,
+                numeric_stats=numeric_stats,
+                string_stats=string_stats,
+                date_stats=date_stats,
+                unique_value_stats=unique_value_stats,
+            )
 
         return columns_profile
 
     def _profile_numeric_column(
         self, dataframe: DataFrame, column_name: str
-    ) -> Dict[str, Any]:
+    ) -> NumericStatistics:
         """Profile a numeric column.
 
         Args:
@@ -156,11 +181,8 @@ class ProfilerCheck:
             column_name: Name of the numeric column.
 
         Returns:
-            Dictionary with numeric statistics.
+            NumericStatistics object with numeric statistics.
         """
-        # Import Spark functions
-        from pyspark.sql import functions as F
-
         # Get basic statistics
         stats = dataframe.select(
             F.min(column_name).alias("min"),
@@ -169,31 +191,32 @@ class ProfilerCheck:
             F.stddev_pop(column_name).alias("stddev"),
         ).first()
 
-        numeric_stats = {
-            "min": stats["min"] if stats else None,
-            "max": stats["max"] if stats else None,
-            "mean": stats["mean"] if stats else None,
-            "stddev": stats["stddev"] if stats else None,
-        }
+        percentiles: Dict[str, Optional[float]] = {}
 
         # Add percentiles for comprehensive/advanced
         if self._profile_type in ("comprehensive", "advanced"):
-            percentiles = [0.25, 0.5, 0.75, 0.9, 0.95, 0.99]
+            percentile_values = [0.25, 0.5, 0.75, 0.9, 0.95, 0.99]
             exprs = [
                 F.percentile_approx(column_name, p).alias(f"p{int(p*100)}")
-                for p in percentiles
+                for p in percentile_values
             ]
             percentile_results = dataframe.select(exprs).first()
 
-            for i, p in enumerate(percentiles):
+            for i, p in enumerate(percentile_values):
                 if percentile_results:
-                    numeric_stats[f"p{int(p*100)}"] = percentile_results[i]
+                    percentiles[f"p{int(p*100)}"] = percentile_results[i]
 
-        return numeric_stats
+        return NumericStatistics(
+            min=stats["min"] if stats else None,
+            max=stats["max"] if stats else None,
+            mean=stats["mean"] if stats else None,
+            stddev=stats["stddev"] if stats else None,
+            percentiles=percentiles,
+        )
 
     def _profile_string_column(
         self, dataframe: DataFrame, column_name: str
-    ) -> Dict[str, Any]:
+    ) -> StringStatistics:
         """Profile a string column.
 
         Args:
@@ -201,10 +224,8 @@ class ProfilerCheck:
             column_name: Name of the string column.
 
         Returns:
-            Dictionary with string statistics.
+            StringStatistics object with string statistics.
         """
-        from pyspark.sql import functions as F
-
         # Get length statistics
         length_stats = dataframe.select(
             F.min(F.length(column_name)).alias("min_length"),
@@ -212,21 +233,22 @@ class ProfilerCheck:
             F.mean(F.length(column_name)).alias("avg_length"),
         ).first()
 
-        string_stats = {
-            "min_length": length_stats["min_length"] if length_stats else None,
-            "max_length": length_stats["max_length"] if length_stats else None,
-            "avg_length": length_stats["avg_length"] if length_stats else None,
-        }
+        patterns: Dict[str, int] = {}
 
         # Add pattern detection for comprehensive/advanced
         if self._profile_type in ("comprehensive", "advanced"):
-            string_stats["patterns"] = self._detect_patterns(dataframe, column_name)
+            patterns = self._detect_patterns(dataframe, column_name)
 
-        return string_stats
+        return StringStatistics(
+            min_length=length_stats["min_length"] if length_stats else None,
+            max_length=length_stats["max_length"] if length_stats else None,
+            avg_length=length_stats["avg_length"] if length_stats else None,
+            patterns=patterns,
+        )
 
     def _profile_date_column(
         self, dataframe: DataFrame, column_name: str
-    ) -> Dict[str, Any]:
+    ) -> DateStatistics:
         """Profile a date/timestamp column.
 
         Args:
@@ -234,24 +256,22 @@ class ProfilerCheck:
             column_name: Name of the date column.
 
         Returns:
-            Dictionary with date statistics.
+            DateStatistics object with date statistics.
         """
-        from pyspark.sql import functions as F
-
         # Get date range
         date_stats = dataframe.select(
             F.min(column_name).alias("min_date"),
             F.max(column_name).alias("max_date"),
         ).first()
 
-        return {
-            "min_date": str(date_stats["min_date"]) if date_stats["min_date"] else None,
-            "max_date": str(date_stats["max_date"]) if date_stats["max_date"] else None,
-        }
+        return DateStatistics(
+            min_date=str(date_stats["min_date"]) if date_stats["min_date"] else None,
+            max_date=str(date_stats["max_date"]) if date_stats["max_date"] else None,
+        )
 
     def _profile_unique_values(
         self, dataframe: DataFrame, column_name: str
-    ) -> Dict[str, Any]:
+    ) -> UniqueValueStatistics:
         """Profile unique values for a column.
 
         Args:
@@ -259,7 +279,7 @@ class ProfilerCheck:
             column_name: Name of the column.
 
         Returns:
-            Dictionary with unique value statistics.
+            UniqueValueStatistics object with unique value statistics.
         """
         # Get distinct count
         distinct_count = dataframe.select(column_name).distinct().count()
@@ -274,13 +294,13 @@ class ProfilerCheck:
             .collect()
         )
 
-        return {
-            "distinct_count": distinct_count,
-            "unique_percentage": (
+        return UniqueValueStatistics(
+            distinct_count=distinct_count,
+            unique_percentage=(
                 (distinct_count / total_count * 100) if total_count > 0 else 0
             ),
-            "sample_values": unique_values[: self._max_unique_values],
-        }
+            sample_values=unique_values[: self._max_unique_values],
+        )
 
     def _profile_correlations(self, dataframe: DataFrame) -> Dict[str, float]:
         """Compute correlation matrix for numeric columns.
@@ -385,7 +405,7 @@ class ProfilerCheck:
 
     def _generate_suggestions(
         self, dataframe: DataFrame, profile: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+    ) -> List[RuleSuggestion]:
         """Suggest validation rules based on profile data.
 
         Args:
@@ -393,86 +413,87 @@ class ProfilerCheck:
             profile: Profiling results.
 
         Returns:
-            List of rule suggestion dictionaries.
+            List of RuleSuggestion objects.
         """
-        suggestions = []
+        suggestions: List[RuleSuggestion] = []
 
         columns_profile = profile.get("columns", {})
 
         for column_name, column_profile in columns_profile.items():
             # Suggest completeness checks for columns with high null percentage
-            null_pct = column_profile.get("null_percentage", 0)
+            null_pct = column_profile.null_percentage
             if null_pct > 5:
                 suggestions.append(
-                    {
-                        "column": column_name,
-                        "issue": "high_null_percentage",
-                        "suggestion": f"Completeness check recommended ({null_pct:.1f}% null)",
-                        "constraint": "Completeness",
-                        "severity": "warning" if null_pct < 20 else "error",
-                    }
+                    RuleSuggestion(
+                        column=column_name,
+                        issue="high_null_percentage",
+                        suggestion=f"Completeness check recommended ({null_pct:.1f}% null)",
+                        constraint="Completeness",
+                        severity="warning" if null_pct < 20 else "error",
+                    )
                 )
 
             # Suggest uniqueness checks for low distinct percentage
-            if "distinct_count" in column_profile:
-                total_count = profile["general"]["row_count"]
-                distinct_pct = column_profile["distinct_count"]
+            if column_profile.unique_value_stats is not None:
+                total_count = profile["general"].row_count
+                distinct_count = column_profile.unique_value_stats.distinct_count
                 uniqueness_pct = (
-                    (distinct_pct / total_count * 100) if total_count > 0 else 0
+                    (distinct_count / total_count * 100) if total_count > 0 else 0
                 )
 
-                if uniqueness_pct < 90 and column_profile.get("data_type") in (
+                if uniqueness_pct < 90 and column_profile.data_type in (
                     "StringType",
                     "IntegerType",
                 ):
                     suggestions.append(
-                        {
-                            "column": column_name,
-                            "issue": "low_uniqueness",
-                            "suggestion": f"Uniqueness check recommended ({uniqueness_pct:.1f}% unique)",
-                            "constraint": "Uniqueness",
-                            "severity": "info",
-                        }
+                        RuleSuggestion(
+                            column=column_name,
+                            issue="low_uniqueness",
+                            suggestion=f"Uniqueness check recommended ({uniqueness_pct:.1f}% unique)",
+                            constraint="Uniqueness",
+                            severity="info",
+                        )
                     )
 
             # Suggest range checks for numeric columns with min/max
-            if "min" in column_profile and "max" in column_profile:
-                min_val = column_profile["min"]
-                max_val = column_profile["max"]
+            if column_profile.numeric_stats is not None:
+                min_val = column_profile.numeric_stats.min
+                max_val = column_profile.numeric_stats.max
                 if min_val is not None and max_val is not None:
                     suggestions.append(
-                        {
-                            "column": column_name,
-                            "issue": "numeric_range_identified",
-                            "suggestion": f"Range check suggested: [{min_val}, {max_val}]",
-                            "constraint": "RangeCheck",
-                            "severity": "info",
-                        }
+                        RuleSuggestion(
+                            column=column_name,
+                            issue="numeric_range_identified",
+                            suggestion=f"Range check suggested: [{min_val}, {max_val}]",
+                            constraint="RangeCheck",
+                            severity="info",
+                        )
                     )
 
             # Suggest pattern checks for string columns with detected patterns
-            if "patterns" in column_profile:
-                patterns = column_profile.get("patterns", {})
-                if patterns.get("email", 0) > len(dataframe) * 0.5:
+            if column_profile.string_stats is not None:
+                patterns = column_profile.string_stats.patterns
+                row_count = len(dataframe)
+                if patterns.get("email", 0) > row_count * 0.5:
                     suggestions.append(
-                        {
-                            "column": column_name,
-                            "issue": "email_format_detected",
-                            "suggestion": "Email format pattern check recommended",
-                            "constraint": "PatternMatch",
-                            "severity": "info",
-                        }
+                        RuleSuggestion(
+                            column=column_name,
+                            issue="email_format_detected",
+                            suggestion="Email format pattern check recommended",
+                            constraint="PatternMatch",
+                            severity="info",
+                        )
                     )
 
-                if patterns.get("url", 0) > len(dataframe) * 0.5:
+                if patterns.get("url", 0) > row_count * 0.5:
                     suggestions.append(
-                        {
-                            "column": column_name,
-                            "issue": "url_format_detected",
-                            "suggestion": "URL format pattern check recommended",
-                            "constraint": "PatternMatch",
-                            "severity": "info",
-                        }
+                        RuleSuggestion(
+                            column=column_name,
+                            issue="url_format_detected",
+                            suggestion="URL format pattern check recommended",
+                            constraint="PatternMatch",
+                            severity="info",
+                        )
                     )
 
         return suggestions

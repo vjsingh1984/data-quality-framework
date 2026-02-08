@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 import warnings
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List
 
 from pyhocon import ConfigTree
@@ -42,6 +43,7 @@ class ProfilerEngine(DQEngine):
                 profile_type = "comprehensive"  # or "basic", "advanced"
                 include_correlation = false  # Optional: compute correlations
                 max_unique_values = 100  # Limit unique value analysis
+                export_path = "/path/to/profile_report.json"  # Optional: export results
                 export_format = "json"  # or "html", "markdown"
                 suggest_rules = true  # Generate rule suggestions based on profile
             }
@@ -50,6 +52,7 @@ class ProfilerEngine(DQEngine):
 
     def __init__(self, config: ConfigTree):
         self._spark_session = None
+        self._last_profile_result = None
         super().__init__(config)
 
     def _validate_config(self) -> None:
@@ -87,19 +90,29 @@ class ProfilerEngine(DQEngine):
         include_correlation = self._config.get("include_correlation", False)
         max_unique_values = self._config.get("max_unique_values", 100)
 
+        # Get DataFrame name from config
+        dataframe_name = self._config.get("dataframe_name", "unknown")
+
         # Run profiling based on profile type
         summary_metrics = self._run_profiling(
             dataframe,
+            dataframe_name=dataframe_name,
             profile_type=profile_type,
             include_correlation=include_correlation,
             max_unique_values=max_unique_values,
         )
+
+        # Export results if export_path is configured
+        export_path = self._config.get("export_path")
+        if export_path:
+            self._export_profile(summary_metrics, export_path)
 
         return summary_metrics
 
     def _run_profiling(
         self,
         df: DataFrame,
+        dataframe_name: str,
         profile_type: str,
         include_correlation: bool,
         max_unique_values: int,
@@ -108,6 +121,7 @@ class ProfilerEngine(DQEngine):
 
         Args:
             df: DataFrame to profile.
+            dataframe_name: Name of the DataFrame being profiled.
             profile_type: Type of profiling ("basic", "comprehensive", "advanced").
             include_correlation: Whether to compute correlation matrix.
             max_unique_values: Maximum unique values to analyze per column.
@@ -115,10 +129,9 @@ class ProfilerEngine(DQEngine):
         Returns:
             List of profiling metric dicts.
         """
-        metrics = []
-
         # Import profiling check functionality
         from dq.engine.profiler.profiler_check import ProfilerCheck
+        from dq.engine.profiler.profiler_results import ProfileMetrics
 
         profiler_check = ProfilerCheck(
             profile_type=profile_type,
@@ -127,21 +140,60 @@ class ProfilerEngine(DQEngine):
         )
 
         # Get profiling results
-        profile_results = profiler_check.profile_dataframe(df)
+        profile_result = profiler_check.profile_dataframe(df, dataframe_name)
 
-        # Convert to metric format
-        for metric_name, metric_value in profile_results.items():
-            metric = self._create_metric(
-                check=f"Profile.{metric_name}",
-                success=True,
-                details={"profile_result": metric_value},
-                constraint="Profile",
-            )
-            metrics.append(metric.to_dict())
+        # Store the profile result for export
+        self._last_profile_result = profile_result
 
-        logger.info(
-            "Profiling completed: %d metrics generated",
-            len(metrics),
+        # Create single metric with complete profile
+        profile_metric = ProfileMetrics(
+            check="Profile",
+            success=True,
+            details={"profile_result": profile_result.to_dict()},
+            constraint="Profile",
+            dataframe_name=dataframe_name,
+            timestamp=profile_result.timestamp,
         )
 
-        return metrics
+        logger.info(
+            "Profiling completed for DataFrame '%s': %d columns profiled",
+            dataframe_name,
+            profile_result.general.column_count,
+        )
+
+        return [profile_metric.to_dict()]
+
+    def _export_profile(self, metrics: List[Dict[str, Any]], export_path: str) -> None:
+        """Export profiling results to a file.
+
+        Args:
+            metrics: Profiling metrics to export.
+            export_path: Path to export file.
+        """
+        from dq.engine.profiler.profiler_exporter import ProfileExporter
+        from dq.engine.profiler.profiler_results import ProfileResult
+
+        # Extract profile result from metrics
+        profile_dict = metrics[0]["details"]["profile_result"]
+        profile_result = ProfileResult.from_dict(profile_dict)
+
+        # Determine export format from file extension
+        export_format = self._config.get("export_format")
+        if export_format is None:
+            # Infer from file extension
+            path = Path(export_path)
+            suffix = path.suffix.lower()
+            if suffix == ".json":
+                export_format = "json"
+            elif suffix == ".html":
+                export_format = "html"
+            elif suffix in (".md", ".markdown"):
+                export_format = "markdown"
+            else:
+                export_format = "json"
+
+        # Export the profile
+        exporter = ProfileExporter()
+        exporter.export(profile_result, export_path, format=export_format)
+
+        logger.info("Profile exported to %s (format: %s)", export_path, export_format)
