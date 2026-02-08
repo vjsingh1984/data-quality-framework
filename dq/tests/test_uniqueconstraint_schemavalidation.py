@@ -85,7 +85,7 @@ def test_unique_constraint_single_key_single_check_mode_failure(spark):
     df = spark.createDataFrame(data=data, schema=data_schema)
     assert False == process_schemavalidation_failure(
         spark, df, schema_config
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -117,7 +117,7 @@ def test_unique_constraint_composite_key_single_check_mode_success(spark):
     df = spark.createDataFrame(data=data, schema=data_schema)
     assert True == process_schemavalidation_success(
         spark, df, schema_config
-    ), "Atleast one metric failed."
+    ), "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -149,7 +149,7 @@ def test_unique_constraint_composite_key_single_check_mode_failure(spark):
     df = spark.createDataFrame(data=data, schema=data_schema)
     assert False == process_schemavalidation_failure(
         spark, df, schema_config
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -181,7 +181,7 @@ def test_unique_constraint_single_key_multiple_check_mode_success(spark):
     df = spark.createDataFrame(data=data, schema=data_schema)
     assert True == process_schemavalidation_success(
         spark, df, schema_config
-    ), "Atleast one metric failed."
+    ), "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -213,7 +213,7 @@ def test_unique_constraint_single_key_multiple_check_mode_failure(spark):
     df = spark.createDataFrame(data=data, schema=data_schema)
     assert False == process_schemavalidation_failure(
         spark, df, schema_config
-    ), "Atleast one metric failed."
+    ), "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -245,7 +245,7 @@ def test_unique_constraint_composite_key_multiple_check_mode_success(spark):
     df = spark.createDataFrame(data=data, schema=data_schema)
     assert True == process_schemavalidation_success(
         spark, df, schema_config
-    ), "Atleast one metric failed."
+    ), "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -277,7 +277,7 @@ def test_unique_constraint_composite_key_multiple_check_mode_failure(spark):
     df = spark.createDataFrame(data=data, schema=data_schema)
     assert False == process_schemavalidation_failure(
         spark, df, schema_config
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 def process_schemavalidation_success(spark, df, config):

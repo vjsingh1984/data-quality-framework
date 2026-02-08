@@ -274,7 +274,7 @@ def test_schemavalidation_single_check_mode_success(
 ):
     assert True == process_schemavalidation_success(
         spark, df_incomingnullable, single_schemavalidation_nullable_config
-    ), "Atleast one metric failed."
+    ), "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -283,7 +283,7 @@ def test_schemavalidation_single_check_mode_failure(
 ):
     assert False == process_schemavalidation_failure(
         spark, df_incomingnullable, single_schemavalidation_nullable_config
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -292,7 +292,7 @@ def test_schemavalidation_integer_type_success(
 ):
     assert True == process_schemavalidation_success(
         spark, df_integer_incomingnullable, single_schemavalidation_nullable_config
-    ), "Atleast one metric failed."
+    ), "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -301,7 +301,7 @@ def test_schemavalidation_integer_type_failure(
 ):
     assert False == process_schemavalidation_failure(
         spark, df_integer_incomingnullable, single_schemavalidation_nullable_config
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -340,7 +340,7 @@ def test_schemavalidation_float_type_success(spark):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
 
-    assert True == overallsuccess, "Atleast one metric failed."
+    assert True == overallsuccess, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -349,7 +349,7 @@ def test_schemavalidation_float_type_failure(
 ):
     assert False == process_schemavalidation_failure(
         spark, df_float_incomingnullable, single_schemavalidation_nullable_config
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -358,7 +358,7 @@ def test_schemavalidation_double_type_success(
 ):
     assert True == process_schemavalidation_success(
         spark, df_double_incomingnullable, single_schemavalidation_nullable_config
-    ), "Atleast one metric failed."
+    ), "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -367,7 +367,7 @@ def test_schemavalidation_double_type_failure(
 ):
     assert False == process_schemavalidation_failure(
         spark, df_double_incomingnullable, single_schemavalidation_nullable_config
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -376,7 +376,7 @@ def test_schemavalidation_decimal_type_success(
 ):
     assert True == process_schemavalidation_success(
         spark, df_decimal_incomingnullable, single_schemavalidation_nullable_config
-    ), "Atleast one metric failed."
+    ), "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -385,7 +385,7 @@ def test_schemavalidation_decimal_type_failure(
 ):
     assert False == process_schemavalidation_failure(
         spark, df_decimal_incomingnullable, single_schemavalidation_nullable_config
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -394,7 +394,7 @@ def test_schemavalidation_date_type_success(
 ):
     assert True == process_schemavalidation_success(
         spark, df_date_incomingnullable, single_schemavalidation_nullable_config
-    ), "Atleast one metric failed."
+    ), "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -403,7 +403,7 @@ def test_schemavalidation_date_type_failure(
 ):
     assert False == process_schemavalidation_failure(
         spark, df_date_incomingnullable, single_schemavalidation_nullable_config
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -412,7 +412,7 @@ def test_schemavalidation_timestamp_type_success(
 ):
     assert True == process_schemavalidation_success(
         spark, df_timestamp_incomingnullable, single_schemavalidation_nullable_config
-    ), "Atleast one metric failed."
+    ), "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -421,7 +421,7 @@ def test_schemavalidation_timestamp_type_failure(
 ):
     assert False == process_schemavalidation_failure(
         spark, df_timestamp_incomingnullable, single_schemavalidation_nullable_config
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -603,4 +603,4 @@ def test_nullable_false_schemavalidation_single_check_mode_failure(spark):
         df.printSchema()
         print("summary")
         print(json.dumps(summary_metrics, indent=2))
-    assert False == overallsuccess, "Atleast one metric should have failed"
+    assert False == overallsuccess, "At least one metric should have failed"

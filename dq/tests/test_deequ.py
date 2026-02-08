@@ -126,7 +126,7 @@ def test_single_check_deequ_engine_success(
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
 
-    assert True == overallsuccess, "Atleast one metric failed."
+    assert True == overallsuccess, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -142,7 +142,7 @@ def test_multi_check_deequ_engine_success(
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
 
-    assert True == overallsuccess, "Atleast one metric failed."
+    assert True == overallsuccess, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -156,7 +156,7 @@ def test_single_check_deequ_engine_failure(
         if not (metric["success"]):
             overallsuccess = False
 
-    assert False == overallsuccess, "Atleast one metric should have failed."
+    assert False == overallsuccess, "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -170,4 +170,4 @@ def test_multi_check_deequ_engine_failure(
         if not (metric["success"]):
             overallsuccess = False
 
-    assert False == overallsuccess, "Atleast one metric should have failed."
+    assert False == overallsuccess, "At least one metric should have failed."

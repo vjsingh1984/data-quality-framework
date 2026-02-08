@@ -193,7 +193,7 @@ def test_schemavalidation_single_check_mode_true_varchartype10_success(spark):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
 
-    assert True == overallsuccess, "Atleast one metric failed."
+    assert True == overallsuccess, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -233,7 +233,7 @@ def test_schemavalidation_single_check_mode_true_shortType_success(spark):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
 
-    assert True == overallsuccess, "Atleast one metric failed."
+    assert True == overallsuccess, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -270,7 +270,7 @@ def test_schemavalidation_single_check_mode_true_chartype10_success(spark):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
 
-    assert True == overallsuccess, "Atleast one metric failed."
+    assert True == overallsuccess, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -311,7 +311,7 @@ def test_schemavalidation_single_check_mode_true_booleanType_success(spark):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
 
-    assert True == overallsuccess, "Atleast one metric failed."
+    assert True == overallsuccess, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -489,7 +489,7 @@ def test_schemavalidation_single_check_mode_false_varchartype10_success(spark):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
 
-    assert True == overallsuccess, "Atleast one metric failed."
+    assert True == overallsuccess, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -529,7 +529,7 @@ def test_schemavalidation_single_check_mode_false_shortType_success(spark):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
 
-    assert True == overallsuccess, "Atleast one metric failed."
+    assert True == overallsuccess, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -566,7 +566,7 @@ def test_schemavalidation_single_check_mode_false_chartype10_success(spark):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
 
-    assert True == overallsuccess, "Atleast one metric failed."
+    assert True == overallsuccess, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -607,4 +607,4 @@ def test_schemavalidation_single_check_mode_false_booleanType_success(spark):
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
 
-    assert True == overallsuccess, "Atleast one metric failed."
+    assert True == overallsuccess, "At least one metric failed."

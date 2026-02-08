@@ -26,4 +26,4 @@ def test_deequ_engine_success(spark, multi_column_dataframe, sample_domain_confi
             print("Error in : " + json.dumps(metric))
             overallsuccess = False
 
-    assert False == overallsuccess, "Atleast one metric failed."
+    assert False == overallsuccess, "At least one metric failed."

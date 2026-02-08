@@ -171,7 +171,7 @@ def test_schemavalidation_fk_use_list_check_true_single_check_mode_success(
         spark,
         df_long_incoming,
         list_check_true_single_check_mode_schemavalidation_config,
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -182,7 +182,7 @@ def test_schemavalidation_fk_use_list_check_false_single_check_mode_success(
         spark,
         df_long_incoming,
         list_check_false_single_check_mode_schemavalidation_config,
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -193,7 +193,7 @@ def test_schemavalidation_fk_use_list_check_true_single_check_mode_failure(
         spark,
         df_long_incoming,
         list_check_true_single_check_mode_schemavalidation_config,
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -204,7 +204,7 @@ def test_schemavalidation_fk_use_list_check_false_single_check_mode_failure(
         spark,
         df_long_incoming,
         list_check_false_single_check_mode_schemavalidation_config,
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -215,7 +215,7 @@ def test_schemavalidation_fk_use_list_check_true_multiple_check_mode_success(
         spark,
         df_long_incoming,
         list_check_true_multiple_check_mode_schemavalidation_config,
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -228,7 +228,7 @@ def test_schemavalidation_fk_use_list_check_false_multiple_check_mode_success(
         spark,
         df_long_incoming,
         list_check_false_multiple_check_mode_schemavalidation_config,
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -239,7 +239,7 @@ def test_schemavalidation_fk_use_list_check_true_multiple_check_mode_failure(
         spark,
         df_long_incoming,
         list_check_true_multiple_check_mode_schemavalidation_config,
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -252,4 +252,4 @@ def test_schemavalidation_fk_use_list_check_false_multiple_check_mode_failure(
         spark,
         df_long_incoming,
         list_check_false_multiple_check_mode_schemavalidation_config,
-    ), "Atleast one metric should have failed."
+    ), "At least one metric should have failed."
