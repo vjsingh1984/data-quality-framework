@@ -49,7 +49,7 @@ class CrossColumnRule(DRule):
             "constraint_name", f"cross_column_{left}_{operator}_{right}"
         )
 
-        _operator_map = {
+        operator_map = {
             "<": lambda l, r: l < r,
             "<=": lambda l, r: l <= r,
             ">": lambda l, r: l > r,
@@ -59,13 +59,13 @@ class CrossColumnRule(DRule):
         }
 
         total = dataframe.count()
-        left_col = F.col(left)
-        right_col = F.col(right)
-        condition = _operator_map[operator](left_col, right_col)
+        left_column_expr = F.col(left)
+        right_column_expr = F.col(right)
+        condition = operator_map[operator](left_column_expr, right_column_expr)
 
         # Rows violating: either nulls in compared columns or condition not met
         violations = dataframe.filter(
-            left_col.isNull() | right_col.isNull() | ~condition
+            left_column_expr.isNull() | right_column_expr.isNull() | ~condition
         ).count()
 
         return [

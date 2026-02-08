@@ -54,23 +54,23 @@ class ColumnThresholdRule(DRule):
                 }
             ]
 
-        col_ref = F.col(column)
+        column_expr = F.col(column)
         conditions = []
 
         if "exact" in config:
-            conditions.append(col_ref != config["exact"])
+            conditions.append(column_expr != config["exact"])
         else:
             if "min" in config:
-                conditions.append(col_ref < config["min"])
+                conditions.append(column_expr < config["min"])
             if "max" in config:
-                conditions.append(col_ref > config["max"])
+                conditions.append(column_expr > config["max"])
 
         # Combine conditions with OR — any violation counts
         if conditions:
             combined = conditions[0]
             for c in conditions[1:]:
                 combined = combined | c
-            violations = dataframe.filter(combined | col_ref.isNull()).count()
+            violations = dataframe.filter(combined | column_expr.isNull()).count()
         else:
             violations = 0
 

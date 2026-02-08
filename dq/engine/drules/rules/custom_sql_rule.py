@@ -71,14 +71,14 @@ class CustomSQLRule(DRule):
             dataframe.createOrReplaceTempView(view_name)
             # Replace {table} placeholder with the temp view name
             resolved_sql = sql_expression.replace("{table}", view_name)
-            result_df = spark.sql(resolved_sql)
-            rows = result_df.collect()
+            result_dataframe = spark.sql(resolved_sql)
+            rows = result_dataframe.collect()
             if not rows or rows[0][0] is None:
                 result_value = None
             else:
                 result_value = rows[0][0]
 
-            _op_map = {
+            operator_map = {
                 "<": lambda a, b: a < b,
                 "<=": lambda a, b: a <= b,
                 ">": lambda a, b: a > b,
@@ -86,7 +86,7 @@ class CustomSQLRule(DRule):
                 "==": lambda a, b: a == b,
                 "!=": lambda a, b: a != b,
             }
-            success = _op_map[expected_operator](result_value, expected_value)
+            success = operator_map[expected_operator](result_value, expected_value)
 
             return [
                 {
