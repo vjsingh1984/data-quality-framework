@@ -80,6 +80,19 @@ class ConstraintRegistry:
             return cls._constraints[name]
 
     @classmethod
+    def is_registered(cls, name: str) -> bool:
+        """Check if a constraint is registered.
+
+        Args:
+            name: Constraint name.
+
+        Returns:
+            True if constraint is registered, False otherwise.
+        """
+        with cls._lock:
+            return name in cls._constraints
+
+    @classmethod
     def list_constraints(cls) -> List[str]:
         """Return list of registered constraint names."""
         return list(cls._constraints.keys())

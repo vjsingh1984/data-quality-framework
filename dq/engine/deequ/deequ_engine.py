@@ -11,6 +11,7 @@ from pyhocon import ConfigTree
 
 from dq.engine.deequ.deequ_check import DeequCheck
 from dq.engine.dq_engine import DQEngine
+from dq.exceptions import ConfigurationError
 from dq.utils import constants, repository_utils
 
 if TYPE_CHECKING:
@@ -31,6 +32,25 @@ class DeequEngine(DQEngine):
     def __init__(self, config: ConfigTree, dqts: Optional[int] = None):
         self._sparkSession = None
         super().__init__(config, dqts)
+
+    def _validate_config(self) -> None:
+        """Validate Deequ configuration at init time."""
+        checks = self._config.get("checks", [])
+        if not checks:
+            raise ConfigurationError(
+                "DeequEngine requires 'checks' in configuration with at least one check."
+            )
+
+        for i, check in enumerate(checks):
+            try:
+                constraint = check.get("constraint")
+            except Exception:
+                constraint = None
+
+            if not constraint:
+                raise ConfigurationError(
+                    f"Check at index {i} is missing required 'constraint' key."
+                )
 
     def apply(self, dataframe: DataFrame, repository=None) -> List[Dict[str, Any]]:
         """Run Deequ verification checks against the DataFrame.

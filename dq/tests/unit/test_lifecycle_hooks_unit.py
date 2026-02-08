@@ -193,7 +193,15 @@ class TestCustomEngineLifecycle:
         """Test that CustomEngine unpersists cached DataFrames in after_apply."""
         from pyhocon import ConfigFactory
 
-        config = ConfigFactory.parse_string("{}")
+        config = ConfigFactory.parse_string(
+            """
+            {
+                checks = [
+                    { constraint = "RateOfChange" }
+                ]
+            }
+            """
+        )
 
         # Create engine with cached data
         engine = CustomEngine(config)
@@ -217,7 +225,15 @@ class TestCustomEngineLifecycle:
         """Test that CustomEngine handles cached objects without unpersist method."""
         from pyhocon import ConfigFactory
 
-        config = ConfigFactory.parse_string("{}")
+        config = ConfigFactory.parse_string(
+            """
+            {
+                checks = [
+                    { constraint = "RateOfChange" }
+                ]
+            }
+            """
+        )
 
         # Create engine
         engine = CustomEngine(config)

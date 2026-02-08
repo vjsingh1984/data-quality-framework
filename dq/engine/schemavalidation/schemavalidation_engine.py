@@ -11,6 +11,7 @@ from pyhocon import ConfigTree
 
 from dq.engine.dq_engine import DQEngine
 from dq.engine.schemavalidation.schemavalidation_check import SchemavalidationCheck
+from dq.exceptions import ConfigurationError
 from dq.utils import constants, repository_utils
 
 if TYPE_CHECKING:
@@ -30,6 +31,19 @@ class SchemavalidationEngine(DQEngine):
     def __init__(self, config: ConfigTree, dqts: Optional[int] = None):
         super().__init__(config, dqts)
         self._sparkSession = None
+
+    def _validate_config(self) -> None:
+        """Validate SchemavalidationEngine configuration at init time."""
+        try:
+            schema = self._config.get("schema")
+        except Exception:
+            schema = None
+
+        if not schema:
+            raise ConfigurationError(
+                "SchemavalidationEngine requires 'schema' in configuration with "
+                "table definitions including columns and constraints."
+            )
 
     def apply(self, dataframe: DataFrame, repository=None) -> List[Dict[str, Any]]:
         """Run schema validation checks against the DataFrame.

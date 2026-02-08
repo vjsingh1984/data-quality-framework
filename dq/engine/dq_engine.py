@@ -38,6 +38,21 @@ class DQEngine(ABC):
 
             self._repository_writer = NoOpRepositoryWriter()
 
+        # Validate configuration at init time (fail-fast)
+        self._validate_config()
+
+    def _validate_config(self) -> None:
+        """Validate configuration at init time.
+
+        Subclasses can override this method to perform engine-specific
+        validation. This is called at the end of __init__ to provide
+        fail-fast behavior for configuration errors.
+
+        Raises:
+            ConfigurationError: If the configuration is invalid.
+        """
+        pass
+
     def before_apply(self, dataframe: DataFrame) -> None:
         """Hook called before apply() executes.
 

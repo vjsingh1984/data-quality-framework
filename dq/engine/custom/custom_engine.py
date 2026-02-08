@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 import dq.engine.custom.constraints  # noqa: F401
 from dq.engine.custom.constraint_registry import ConstraintRegistry
 from dq.engine.dq_engine import DQEngine
+from dq.exceptions import ConfigurationError
 from dq.utils import constants, repository_utils
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,30 @@ class CustomEngine(DQEngine):
         self._config = config
         self._spark_session = None  # Will be set in apply()
         super().__init__(config, dqts)
+
+    def _validate_config(self) -> None:
+        """Validate CustomEngine configuration at init time."""
+        checks = self._config.get("checks", [])
+        if not checks:
+            raise ConfigurationError(
+                "CustomEngine requires 'checks' in configuration with at least one check."
+            )
+
+        for i, check in enumerate(checks):
+            try:
+                constraint_name = check.get("constraint")
+            except Exception:
+                constraint_name = None
+
+            if not constraint_name:
+                raise ConfigurationError(
+                    f"Check at index {i} is missing required 'constraint' key."
+                )
+            if not ConstraintRegistry.is_registered(constraint_name):
+                raise ConfigurationError(
+                    f"Unknown constraint '{constraint_name}' at index {i}. "
+                    f"Available: {', '.join(ConstraintRegistry.list_constraints())}"
+                )
 
     def before_apply(self, dataframe: DataFrame) -> None:
         """Hook called before apply() - cache reference DataFrames if needed."""

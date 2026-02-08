@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from pyhocon import ConfigTree
 
+# Import rules package to trigger auto-registration BEFORE class definition
+import dq.engine.drules.rules  # noqa: F401
 from dq.engine.dq_engine import DQEngine
 from dq.exceptions import ConfigurationError
 from dq.utils import constants
@@ -30,10 +32,6 @@ class DrulesEngine(DQEngine):
 
     def __init__(self, config: ConfigTree, dqts: Optional[int] = None):
         super().__init__(config, dqts)
-        # Import rules package to trigger auto-registration
-        import dq.engine.drules.rules  # noqa: F401
-
-        self._validate_config()
 
     def _validate_config(self) -> None:
         """Validate all check configs at init time (fail-fast)."""
@@ -41,7 +39,11 @@ class DrulesEngine(DQEngine):
 
         checks = self._config.get("checks", [])
         for i, check in enumerate(checks):
-            rule_type = check.get("rule_type", None)
+            try:
+                rule_type = check.get("rule_type", None)
+            except Exception:
+                rule_type = None
+
             if not rule_type:
                 raise ConfigurationError(
                     f"Check at index {i} is missing required 'rule_type' key."
