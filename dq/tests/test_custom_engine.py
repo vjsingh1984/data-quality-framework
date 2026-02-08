@@ -287,7 +287,8 @@ def test_distinct_groupby_constraint(spark, custom_config, sample_dataframe_grou
         # print( json.dumps(metric))
         # assert metric['success'] == True, f"{metric} failed."
         if not (metric["success"]):
-            print("Error in : " + json.dumps(metric))
+            # Use default=str to handle Spark Row objects
+            print("Error in : " + json.dumps(metric, default=str))
             overallsuccess = False
 
     print(results)
@@ -307,7 +308,8 @@ def test_rate_of_change(
         # print( json.dumps(metric))
         # assert metric['success'] == True, f"{metric} failed."
         if not (metric["success"]):
-            print("Error in : " + json.dumps(metric))
+            # Use default=str to handle Spark Row objects
+            print("Error in : " + json.dumps(metric, default=str))
             overallsuccess = False
     assert overallsuccess == False
 
@@ -324,6 +326,7 @@ def test_wide_col_negative_values(
         # print( json.dumps(metric))
         # assert metric['success'] == True, f"{metric} failed."
         if not (metric["success"]):
-            print("Error in : " + json.dumps(metric))
+            # Use default=str to handle Spark Row objects
+            print("Error in : " + json.dumps(metric, default=str))
             overallsuccess = False
     assert overallsuccess == True
