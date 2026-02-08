@@ -58,22 +58,22 @@ class GreatExpectationsEngine(DQEngine):
                 "in configuration."
             )
 
-        for i, exp in enumerate(expectations):
-            exp_type = exp.get("type", None)
-            if not exp_type:
+        for i, expectation in enumerate(expectations):
+            expectation_type = expectation.get("type", None)
+            if not expectation_type:
                 raise ConfigurationError(
                     f"Expectation at index {i} is missing required 'type' key."
                 )
-            if exp_type not in SUPPORTED_EXPECTATIONS:
+            if expectation_type not in SUPPORTED_EXPECTATIONS:
                 raise ConfigurationError(
-                    f"Unsupported expectation type '{exp_type}'. "
+                    f"Unsupported expectation type '{expectation_type}'. "
                     f"Supported: {sorted(SUPPORTED_EXPECTATIONS)}"
                 )
-            if exp_type not in TABLE_LEVEL_EXPECTATIONS:
-                column = exp.get("column", None)
+            if expectation_type not in TABLE_LEVEL_EXPECTATIONS:
+                column = expectation.get("column", None)
                 if not column:
                     raise ConfigurationError(
-                        f"Expectation '{exp_type}' requires a 'column' parameter."
+                        f"Expectation '{expectation_type}' requires a 'column' parameter."
                     )
 
     def apply(self, df: DataFrame, repository=None) -> List[Dict[str, Any]]:
