@@ -23,9 +23,38 @@ logger = logging.getLogger(__name__)
 class SchemavalidationEngine(DQEngine):
     """Engine that validates DataFrame schemas against expected definitions.
 
-    Validates datatype, nullable, unique, and foreign-key constraints
-    using Spark schema introspection and PyDeequ's VerificationSuite
-    (via composition, not inheritance).
+    Validates datatype, nullable, unique, and foreign-key constraints using:
+
+    - **native backend**: Spark schema introspection (no PyDeequ required)
+    - **deequ backend**: PyDeequ VerificationSuite (legacy, for advanced features)
+
+    The backend is selected via the ``backend`` config option (default: "deequ").
+
+    Usage::
+
+        # Native mode (no PyDeequ required)
+        dqframework {
+            schemavalidation {
+                backend = "native"
+                schema {
+                    tables = [{
+                        name = "my_table"
+                        columns = [
+                            { name = "id", type = "int", nullable = false, unique = true }
+                            { name = "name", type = "string" }
+                        ]
+                    }]
+                }
+            }
+        }
+
+        # Deequ mode (default, requires PyDeequ)
+        dqframework {
+            schemavalidation {
+                backend = "deequ"
+                # ... existing deequ config ...
+            }
+        }
     """
 
     def __init__(self, config: ConfigTree, dqts: Optional[int] = None):
@@ -43,6 +72,13 @@ class SchemavalidationEngine(DQEngine):
             raise ConfigurationError(
                 "SchemavalidationEngine requires 'schema' in configuration with "
                 "table definitions including columns and constraints."
+            )
+
+        # Validate backend option
+        backend = self._config.get("backend", "deequ")
+        if backend not in ("native", "deequ"):
+            raise ConfigurationError(
+                f"Invalid backend '{backend}'. Must be 'native' or 'deequ'."
             )
 
     def apply(self, dataframe: DataFrame, repository=None) -> List[Dict[str, Any]]:
@@ -68,48 +104,52 @@ class SchemavalidationEngine(DQEngine):
         logger.info("Processing %s with %s Engine", rule_name, engine_name)
 
         self._sparkSession = dataframe.sparkSession
-        success_metrics, check_verifications = self._run_verification(dataframe)
 
-        if repository:
-            from pydeequ.repository import ResultKey
+        # Choose backend based on config
+        backend = self._config.get("backend", "deequ")
 
-            current_milli_time = ResultKey.current_milli_time()
-            repository_utils.save_to_repository(
-                repository,
-                success_metrics,
-                constants.DQ_REPOSITORY_METRICS,
-                current_milli_time,
-            )
-            repository_utils.save_to_repository(
-                repository,
-                check_verifications,
-                constants.DQ_REPOSITORY_VERIFICATIONS,
-                current_milli_time,
-            )
+        if backend == "native":
+            summary_metrics = self._run_native_validation(dataframe)
+        else:
+            summary_metrics = self._run_deequ_validation(dataframe, repository)
 
-        summary_metrics = []
-        for check in check_verifications.collect():
-            check_name = check["check"]
-            # Extract constraint from check name
-            constraint = check_name.split(" ")[0] if " " in check_name else check_name
-
-            metric = self._create_metric(
-                check=check_name,
-                success=check["check_status"] == "Success",
-                details=check,
-                constraint=constraint,
-            )
-            summary_metrics.append(metric.to_dict())
         return summary_metrics
 
-    def _run_verification(self, df):
-        """Run PyDeequ VerificationSuite on the DataFrame.
+    def _run_native_validation(self, df: DataFrame) -> List[Dict[str, Any]]:
+        """Run native Spark validation (no PyDeequ required).
 
         Args:
-            df: Spark DataFrame to validate.
+            df: DataFrame to validate.
 
         Returns:
-            Tuple of (successMetrics DataFrame, checkVerifications DataFrame).
+            List of metric dicts.
+        """
+        from dq.engine.dq_engine import DQMetric
+        from dq.validation.schema_validator import NativeSchemaValidator
+
+        schema_config = self._config.get(constants.SCHEMA_VALIDATION_SCHEMA, {})
+        validator = NativeSchemaValidator(schema_config, self._sparkSession)
+
+        summary = validator.validate(df)
+
+        # Convert to metric dicts
+        timestamp_ms = DQMetric.time_ms()
+        dataset = self._get_dataset_name()
+        engine_name = self._get_engine_name()
+
+        return summary.to_metric_dicts(engine_name, dataset, timestamp_ms)
+
+    def _run_deequ_validation(
+        self, df: DataFrame, repository=None
+    ) -> List[Dict[str, Any]]:
+        """Run PyDeequ VerificationSuite on the DataFrame (legacy backend).
+
+        Args:
+            df: DataFrame to validate.
+            repository: Optional repository config for persisting metrics.
+
+        Returns:
+            List of metric dicts.
         """
         from pydeequ.verification import VerificationResult, VerificationSuite
 
@@ -152,4 +192,35 @@ class SchemavalidationEngine(DQEngine):
         check_verifications = VerificationResult.checkResultsAsDataFrame(
             self._sparkSession, verification_result
         )
-        return success_metrics, check_verifications
+
+        if repository:
+            from pydeequ.repository import ResultKey
+
+            current_milli_time = ResultKey.current_milli_time()
+            repository_utils.save_to_repository(
+                repository,
+                success_metrics,
+                constants.DQ_REPOSITORY_METRICS,
+                current_milli_time,
+            )
+            repository_utils.save_to_repository(
+                repository,
+                check_verifications,
+                constants.DQ_REPOSITORY_VERIFICATIONS,
+                current_milli_time,
+            )
+
+        summary_metrics = []
+        for check in check_verifications.collect():
+            check_name = check["check"]
+            # Extract constraint from check name
+            constraint = check_name.split(" ")[0] if " " in check_name else check_name
+
+            metric = self._create_metric(
+                check=check_name,
+                success=check["check_status"] == "Success",
+                details=check,
+                constraint=constraint,
+            )
+            summary_metrics.append(metric.to_dict())
+        return summary_metrics
