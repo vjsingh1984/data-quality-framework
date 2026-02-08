@@ -89,13 +89,17 @@ class SchemavalidationEngine(DQEngine):
 
         summary_metrics = []
         for check in check_verifications.collect():
-            summary_metrics.append(
-                {
-                    "check": check["check"],
-                    "success": check["check_status"] == "Success",
-                    "details": check,
-                }
+            check_name = check["check"]
+            # Extract constraint from check name
+            constraint = check_name.split(" ")[0] if " " in check_name else check_name
+
+            metric = self._create_metric(
+                check=check_name,
+                success=check["check_status"] == "Success",
+                details=check,
+                constraint=constraint,
             )
+            summary_metrics.append(metric.to_dict())
         return summary_metrics
 
     def _run_verification(self, df):

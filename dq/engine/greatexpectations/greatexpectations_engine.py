@@ -124,11 +124,20 @@ class GreatexpectationsEngine(DQEngine):
         """Extract metric dictionaries from GE validation output."""
         summarymetrics = []
         for exp_result in validation_output.results:
-            summarymetrics.append(
-                {
-                    "check": exp_result.expectation_config.expectation_type,
-                    "success": exp_result.success,
-                    "details": exp_result.result,
-                }
+            check_type = exp_result.expectation_config.expectation_type
+
+            # Convert GE result to dict if it isn't already
+            details = exp_result.result
+            if hasattr(details, "to_dict"):
+                details = details.to_dict()
+            elif not isinstance(details, dict):
+                details = {"result": str(details)}
+
+            metric = self._create_metric(
+                check=check_type,
+                success=exp_result.success,
+                details=details,
+                constraint=check_type,
             )
+            summarymetrics.append(metric.to_dict())
         return summarymetrics

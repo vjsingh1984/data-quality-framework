@@ -10,6 +10,7 @@ import functools
 
 DQ_ENGINE_NAME = "engine"
 DQ_RULE_NAME = "name"
+DQ_DATASET = "dataset"
 SCHEMA_VALIDATION_FK_CONSTRAINTS = "foreign_key_constraints"
 SCHEMA_VALIDATION_UNQK_CONSTRAINTS = "unique_constraints"
 SCHEMA_VALIDATION_REF_DB = "ref_db"

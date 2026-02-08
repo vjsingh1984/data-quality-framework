@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from pyhocon import ConfigTree
@@ -12,6 +13,47 @@ if TYPE_CHECKING:
     from pyspark.sql import DataFrame
 
     from dq.repository.repository_writer import RepositoryWriter
+
+
+@dataclass
+class DQMetric:
+    """Normalized metric returned by all data quality engines.
+
+    Provides a consistent schema for metrics across all engines,
+    making it easier for consumers to process results.
+
+    Attributes:
+        check: Name of the check/constraint that was evaluated.
+        constraint: Specific constraint type (e.g., "Completeness", "RangeCheck").
+        success: Whether the check passed (True) or failed (False).
+        engine: Name of the engine that produced this metric.
+        timestamp_ms: Epoch milliseconds when the metric was produced.
+        dataset: Name of the dataset/table that was validated.
+        details: Engine-specific details as a dict.
+        execution_time_ms: Optional execution time in milliseconds.
+        assertion: Optional assertion message describing the check.
+    """
+
+    check: str
+    constraint: str
+    success: bool
+    engine: str
+    timestamp_ms: int
+    dataset: str
+    details: Dict[str, Any] = field(default_factory=dict)
+    execution_time_ms: Optional[int] = None
+    assertion: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for backward compatibility."""
+        return asdict(self)
+
+    @classmethod
+    def time_ms(cls) -> int:
+        """Get current time in milliseconds since epoch."""
+        import time
+
+        return int(time.time() * 1000)
 
 
 class DQEngine(ABC):
@@ -52,6 +94,56 @@ class DQEngine(ABC):
             ConfigurationError: If the configuration is invalid.
         """
         pass
+
+    def _get_engine_name(self) -> str:
+        """Get the engine name for metrics.
+
+        Subclasses can override to customize the engine name in metrics.
+        """
+        return self.__class__.__name__.replace("Engine", "").lower()
+
+    def _get_dataset_name(self) -> str:
+        """Get the dataset name from config.
+
+        Returns the dataset name if configured, otherwise 'unknown'.
+        """
+        from dq.utils import constants
+
+        return self._config.get(constants.DQ_DATASET, "unknown")
+
+    def _create_metric(
+        self,
+        check: str,
+        success: bool,
+        details: Dict[str, Any],
+        constraint: Optional[str] = None,
+        execution_time_ms: Optional[int] = None,
+        assertion: Optional[str] = None,
+    ) -> DQMetric:
+        """Create a normalized metric with common fields populated.
+
+        Args:
+            check: Name of the check.
+            success: Whether the check passed.
+            details: Engine-specific details.
+            constraint: Optional constraint type (defaults to check name).
+            execution_time_ms: Optional execution time.
+            assertion: Optional assertion message.
+
+        Returns:
+            DQMetric with engine, timestamp, and dataset populated.
+        """
+        return DQMetric(
+            check=check,
+            constraint=constraint or check,
+            success=success,
+            engine=self._get_engine_name(),
+            timestamp_ms=DQMetric.time_ms(),
+            dataset=self._get_dataset_name(),
+            details=details,
+            execution_time_ms=execution_time_ms,
+            assertion=assertion,
+        )
 
     def before_apply(self, dataframe: DataFrame) -> None:
         """Hook called before apply() executes.

@@ -177,13 +177,17 @@ class CustomEngine(DQEngine):
 
             summary_metrics = []
             for check in df_metrics_results.collect():
-                summary_metrics.append(
-                    {
-                        "check": check["name"],
-                        "success": check["value"] == 1,
-                        "details": check,
-                    }
+                check_name = check["name"]
+                # Extract constraint from check name if possible
+                constraint = check_name
+
+                metric = self._create_metric(
+                    check=check_name,
+                    success=check["value"] == 1,
+                    details=check,
+                    constraint=constraint,
                 )
+                summary_metrics.append(metric.to_dict())
 
             return summary_metrics
         finally:

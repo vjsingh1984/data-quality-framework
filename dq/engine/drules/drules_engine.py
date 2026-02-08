@@ -90,19 +90,33 @@ class DrulesEngine(DQEngine):
             try:
                 rule_class = RuleRegistry.get(rule_type)
                 rule = rule_class()
-                metrics = rule.evaluate(dataframe, check_dict)
-                all_metrics.extend(metrics)
+                raw_metrics = rule.evaluate(dataframe, check_dict)
+
+                # Normalize each metric to DQMetric format
+                for raw in raw_metrics:
+                    check_name = raw.get("check", rule_type)
+                    constraint = raw.get("constraint", rule_type)
+
+                    metric = self._create_metric(
+                        check=check_name,
+                        success=raw.get("success", False),
+                        details=raw.get("details", {}),
+                        constraint=constraint,
+                    )
+                    all_metrics.append(metric.to_dict())
+
             except (ConfigurationError, KeyError):
                 raise
             except Exception as e:
                 constraint_name = check_dict.get("constraint_name", rule_type)
                 logger.error("Rule '%s' failed: %s", constraint_name, e, exc_info=True)
-                all_metrics.append(
-                    {
-                        "check": constraint_name,
-                        "success": False,
-                        "details": {"error": str(e)},
-                    }
+
+                metric = self._create_metric(
+                    check=constraint_name,
+                    success=False,
+                    details={"error": str(e)},
+                    constraint=rule_type,
                 )
+                all_metrics.append(metric.to_dict())
 
         return all_metrics

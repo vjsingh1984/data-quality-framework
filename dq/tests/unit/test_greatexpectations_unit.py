@@ -157,9 +157,18 @@ class TestGEMetricExtraction:
         result.result = {"observed_value": observed} if observed else {}
         return result
 
-    def test_success_format(self):
+    def _make_mock_engine(self):
+        """Create an engine instance with minimal mocking."""
+        from pyhocon import ConfigFactory
+
         cls = self._get_engine_class()
         engine = cls.__new__(cls)
+        # Mock the config required by _create_metric
+        engine._config = ConfigFactory.parse_string("{}")
+        return engine
+
+    def test_success_format(self):
+        engine = self._make_mock_engine()
         validation = MagicMock()
         validation.results = [self._make_mock_result(True)]
 
@@ -170,8 +179,7 @@ class TestGEMetricExtraction:
         assert "details" in metrics[0]
 
     def test_failure_format(self):
-        cls = self._get_engine_class()
-        engine = cls.__new__(cls)
+        engine = self._make_mock_engine()
         validation = MagicMock()
         validation.results = [self._make_mock_result(False)]
 
@@ -179,8 +187,7 @@ class TestGEMetricExtraction:
         assert metrics[0]["success"] is False
 
     def test_empty_results(self):
-        cls = self._get_engine_class()
-        engine = cls.__new__(cls)
+        engine = self._make_mock_engine()
         validation = MagicMock()
         validation.results = []
 
@@ -188,8 +195,7 @@ class TestGEMetricExtraction:
         assert metrics == []
 
     def test_details_include_observed_value(self):
-        cls = self._get_engine_class()
-        engine = cls.__new__(cls)
+        engine = self._make_mock_engine()
         validation = MagicMock()
         validation.results = [self._make_mock_result(True, observed=42)]
 
