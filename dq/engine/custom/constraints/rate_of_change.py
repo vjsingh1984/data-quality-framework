@@ -2,12 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """RateOfChange constraint — detects sudden value changes between consecutive rows."""
-import logging
-from typing import List, Tuple
+from __future__ import annotations
 
-import pyspark.sql.functions as F
-from pyspark.sql import DataFrame
-from pyspark.sql.window import Window
+import logging
+from typing import TYPE_CHECKING, List, Tuple
+
+if TYPE_CHECKING:
+    from pyspark.sql import DataFrame
 
 from dq.engine.custom.constraint_registry import CustomConstraint
 from dq.engine.custom.constraints.distinctness_by_group import _check_min_max_threshold
@@ -24,6 +25,9 @@ class RateOfChange(CustomConstraint):
     def evaluate(
         self, dataframe: DataFrame, config: dict, spark_session
     ) -> Tuple[List[list], List[list]]:
+        from pyspark.sql import functions as F
+        from pyspark.sql.window import Window
+
         columns = config.get("columns", None)
         group_by = config.get("group_by", None)
         dq_dimension = config.get("dq_dimension", "Compliance")

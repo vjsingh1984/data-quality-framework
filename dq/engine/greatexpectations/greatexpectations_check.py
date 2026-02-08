@@ -5,9 +5,15 @@ import logging
 
 from pyhocon import ConfigTree
 
+from dq.exceptions import ConfigurationError
 from dq.utils import config_utils
 
 logger = logging.getLogger(__name__)
+
+# Expectations that operate at the table level (no column parameter)
+TABLE_LEVEL_EXPECTATIONS = {
+    "expect_table_row_count_to_be_between",
+}
 
 
 class GreatexpectationsCheck:
@@ -25,6 +31,9 @@ class GreatexpectationsCheck:
 
         Args:
             ge_df: A Great Expectations ``SparkDFDataset``.
+
+        Raises:
+            ConfigurationError: If an expectation type does not exist on the dataset.
         """
         for expectation in self._expectations_config:
             expectation_type = expectation.get("type")
@@ -33,7 +42,20 @@ class GreatexpectationsCheck:
             kwargs = config_utils.config_tree_to_python(kwargs_config)
 
             expectation_method = getattr(ge_df, expectation_type, None)
-            if expectation_method:
+            if expectation_method is None:
+                raise ConfigurationError(
+                    f"Expectation type '{expectation_type}' not found on "
+                    "Great Expectations dataset."
+                )
+
+            if expectation_type in TABLE_LEVEL_EXPECTATIONS:
+                logger.debug(
+                    "Applying table-level %s with args: %s",
+                    expectation_type,
+                    kwargs,
+                )
+                expectation_method(**kwargs)
+            else:
                 logger.debug(
                     "Applying %s on column %s with args: %s",
                     expectation_type,
@@ -41,5 +63,3 @@ class GreatexpectationsCheck:
                     kwargs,
                 )
                 expectation_method(column, **kwargs)
-            else:
-                logger.warning("Unknown expectation type: %s", expectation_type)

@@ -89,7 +89,8 @@ class CatalogProviderResolver(DataFrameResolver):
     def resolve(self, name: str) -> Optional[DataFrame]:
         try:
             return self._catalog_provider.get_dataframe(name)
-        except Exception:
+        except Exception as e:
+            logger.debug("Catalog provider lookup failed for '%s': %s", name, e)
             return None
 
 

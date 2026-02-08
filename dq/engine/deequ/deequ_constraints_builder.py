@@ -3,11 +3,6 @@
 
 import logging
 
-from pydeequ.checks import Check, CheckLevel
-from pydeequ.suggestions import *
-from pydeequ.verification import VerificationResult, VerificationSuite
-from pyspark.sql import functions as F
-
 logger = logging.getLogger(__name__)
 
 
@@ -24,6 +19,15 @@ class DeequConstraintsBuilder:
         Returns:
             Dictionary of constraint suggestions from Deequ.
         """
+        from pydeequ.suggestions import (  # noqa: F401
+            CompleteIfCompleteRule,
+            ConstraintSuggestionRunner,
+            NonNegativeNumbersRule,
+            RetainCompletenessRule,
+            RetainTypeRule,
+            UniqueIfApproximatelyUniqueRule,
+        )
+
         suggested_constraints = (
             ConstraintSuggestionRunner(spark)
             .onData(df)
@@ -112,6 +116,10 @@ class DeequConstraintsBuilder:
         Returns:
             DataFrame of check results.
         """
+        from pydeequ.checks import Check, CheckLevel
+        from pydeequ.verification import VerificationResult, VerificationSuite
+        from pyspark.sql import functions as F
+
         for suggestion in constraints["constraint_suggestions"]:
             logger.debug(
                 "Suggested constraint for '%s': %s",
@@ -153,21 +161,20 @@ class DeequConstraintsBuilder:
             spark, checked_constraints
         )
 
-        logger.info(
+        if logger.isEnabledFor(logging.INFO):
             df_checked_constraints.show(
                 n=df_checked_constraints.count(), truncate=False
             )
-        )
 
         df_checked_constraints_failures = df_checked_constraints.filter(
             F.col("constraint_status") == "Failure"
         )
 
-        if df_checked_constraints_failures.count() > 0:
-            logger.info(
-                df_checked_constraints_failures.show(
-                    n=df_checked_constraints_failures.count(), truncate=False
-                )
+        if df_checked_constraints_failures.count() > 0 and logger.isEnabledFor(
+            logging.INFO
+        ):
+            df_checked_constraints_failures.show(
+                n=df_checked_constraints_failures.count(), truncate=False
             )
 
         return df_checked_constraints

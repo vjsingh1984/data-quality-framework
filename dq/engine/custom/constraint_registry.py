@@ -2,11 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Registry for custom constraint implementations."""
-import logging
-from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Type
+from __future__ import annotations
 
-from pyspark.sql import DataFrame
+import logging
+import threading
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Dict, List, Tuple, Type
+
+if TYPE_CHECKING:
+    from pyspark.sql import DataFrame
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +42,7 @@ class ConstraintRegistry:
     """
 
     _constraints: Dict[str, Type[CustomConstraint]] = {}
+    _lock = threading.Lock()
 
     @classmethod
     def register(cls, name: str, constraint_class: Type[CustomConstraint]) -> None:
@@ -47,7 +52,8 @@ class ConstraintRegistry:
             name: Constraint name as it appears in config.
             constraint_class: CustomConstraint subclass.
         """
-        cls._constraints[name] = constraint_class
+        with cls._lock:
+            cls._constraints[name] = constraint_class
         logger.debug(
             "Registered constraint '%s' -> %s", name, constraint_class.__name__
         )
@@ -65,12 +71,13 @@ class ConstraintRegistry:
         Raises:
             KeyError: If constraint is not registered.
         """
-        if name not in cls._constraints:
-            raise KeyError(
-                f"Unknown constraint '{name}'. "
-                f"Available: {', '.join(cls._constraints.keys())}"
-            )
-        return cls._constraints[name]
+        with cls._lock:
+            if name not in cls._constraints:
+                raise KeyError(
+                    f"Unknown constraint '{name}'. "
+                    f"Available: {', '.join(cls._constraints.keys())}"
+                )
+            return cls._constraints[name]
 
     @classmethod
     def list_constraints(cls) -> List[str]:

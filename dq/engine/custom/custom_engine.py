@@ -1,11 +1,14 @@
 # Copyright 2024 Data Quality Framework Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-import logging
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
 
-from pydeequ.repository import ResultKey
-from pyspark.sql import DataFrame
+import logging
+import warnings
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from pyspark.sql import DataFrame
 
 # Import constraints package to trigger auto-registration
 import dq.engine.custom.constraints  # noqa: F401
@@ -41,10 +44,18 @@ class CustomEngine(DQEngine):
         Args:
             dataframe: Spark DataFrame to validate.
             repository: Optional repository config for persisting metrics.
+                Deprecated: Use ``repository_writer`` in constructor instead.
 
         Returns:
             List of metric dicts with ``check``, ``success``, ``details`` keys.
         """
+        if repository is not None:
+            warnings.warn(
+                "The 'repository' parameter is deprecated. "
+                "Use 'repository_writer' in the engine constructor instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         custom_checks = self._config.get("checks", {})
         spark_session = dataframe.sparkSession
         _metrics_results = []
@@ -76,6 +87,8 @@ class CustomEngine(DQEngine):
         )
 
         if repository:
+            from pydeequ.repository import ResultKey
+
             current_milli_time = ResultKey.current_milli_time()
             repository_utils.save_to_repository(
                 repository,
@@ -90,9 +103,9 @@ class CustomEngine(DQEngine):
                 current_milli_time,
             )
 
-        summarymetrics = []
+        summary_metrics = []
         for check in df_metrics_results.collect():
-            summarymetrics.append(
+            summary_metrics.append(
                 {
                     "check": check["name"],
                     "success": check["value"] == 1,
@@ -100,4 +113,4 @@ class CustomEngine(DQEngine):
                 }
             )
 
-        return summarymetrics
+        return summary_metrics

@@ -1,17 +1,20 @@
 # Copyright 2024 Data Quality Framework Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-import logging
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
 
-from pydeequ.repository import ResultKey
-from pydeequ.verification import VerificationResult, VerificationSuite
+import logging
+import warnings
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
 from pyhocon import ConfigTree
-from pyspark.sql import DataFrame
 
 from dq.engine.dq_engine import DQEngine
 from dq.engine.schemavalidation.schemavalidation_check import SchemavalidationCheck
 from dq.utils import constants, repository_utils
+
+if TYPE_CHECKING:
+    from pyspark.sql import DataFrame
 
 logger = logging.getLogger(__name__)
 
@@ -34,44 +37,54 @@ class SchemavalidationEngine(DQEngine):
         Args:
             dataframe: Spark DataFrame to validate.
             repository: Optional repository config for persisting metrics.
+                Deprecated: Use ``repository_writer`` in constructor instead.
 
         Returns:
             List of metric dicts with ``check``, ``success``, ``details`` keys.
         """
+        if repository is not None:
+            warnings.warn(
+                "The 'repository' parameter is deprecated. "
+                "Use 'repository_writer' in the engine constructor instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         rule_name = self._config.get(constants.DQ_RULE_NAME, "Unknown")
         engine_name = self._config.get(constants.DQ_ENGINE_NAME, "Unknown")
         logger.info("Processing %s with %s Engine", rule_name, engine_name)
 
         self._sparkSession = dataframe.sparkSession
-        successMetrics, checkVerifications = self._run_verification(dataframe)
+        success_metrics, check_verifications = self._run_verification(dataframe)
 
         if repository:
+            from pydeequ.repository import ResultKey
+
             current_milli_time = ResultKey.current_milli_time()
             repository_utils.save_to_repository(
                 repository,
-                successMetrics,
+                success_metrics,
                 constants.DQ_REPOSITORY_METRICS,
                 current_milli_time,
             )
             repository_utils.save_to_repository(
                 repository,
-                checkVerifications,
+                check_verifications,
                 constants.DQ_REPOSITORY_VERIFICATIONS,
                 current_milli_time,
             )
 
-        summarymetrics = []
-        for check in checkVerifications.collect():
-            summarymetrics.append(
+        summary_metrics = []
+        for check in check_verifications.collect():
+            summary_metrics.append(
                 {
                     "check": check["check"],
                     "success": check["check_status"] == "Success",
                     "details": check,
                 }
             )
-        return summarymetrics
+        return summary_metrics
 
-    def _run_verification(self, df: DataFrame):
+    def _run_verification(self, df):
         """Run PyDeequ VerificationSuite on the DataFrame.
 
         Args:
@@ -80,6 +93,8 @@ class SchemavalidationEngine(DQEngine):
         Returns:
             Tuple of (successMetrics DataFrame, checkVerifications DataFrame).
         """
+        from pydeequ.verification import VerificationResult, VerificationSuite
+
         single_check_mode = self._config.get(constants.DQ_SINGLE_CHECK_MODE, True)
         schema_validation_check = SchemavalidationCheck(
             schema_config=self._config.get(constants.SCHEMA_VALIDATION_SCHEMA, {}),
@@ -113,10 +128,10 @@ class SchemavalidationEngine(DQEngine):
         else:
             logger.warning("Schema validation failed.")
 
-        final_successmetrics_result_df = VerificationResult.successMetricsAsDataFrame(
+        success_metrics = VerificationResult.successMetricsAsDataFrame(
             self._sparkSession, verification_result
         )
-        final_checkverification_result_df = VerificationResult.checkResultsAsDataFrame(
+        check_verifications = VerificationResult.checkResultsAsDataFrame(
             self._sparkSession, verification_result
         )
-        return final_successmetrics_result_df, final_checkverification_result_df
+        return success_metrics, check_verifications

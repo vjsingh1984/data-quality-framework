@@ -13,6 +13,7 @@ from __future__ import annotations
 import importlib
 import logging
 import re
+import threading
 from typing import TYPE_CHECKING, Dict, Optional, Type
 
 if TYPE_CHECKING:
@@ -27,6 +28,7 @@ class EngineRegistry:
     """Registry for discovering and instantiating DQEngine subclasses."""
 
     _explicit: Dict[str, Type[DQEngine]] = {}
+    _lock = threading.Lock()
 
     @classmethod
     def register(cls, name: str, engine_class: Type[DQEngine]) -> None:
@@ -36,7 +38,8 @@ class EngineRegistry:
             name: Engine name (lowercase alphanumeric).
             engine_class: DQEngine subclass.
         """
-        cls._explicit[name.lower()] = engine_class
+        with cls._lock:
+            cls._explicit[name.lower()] = engine_class
         logger.debug("Registered engine '%s' -> %s", name, engine_class.__name__)
 
     @classmethod
@@ -46,7 +49,8 @@ class EngineRegistry:
         Args:
             name: Engine name to remove.
         """
-        cls._explicit.pop(name.lower(), None)
+        with cls._lock:
+            cls._explicit.pop(name.lower(), None)
 
     @classmethod
     def get_engine_class(cls, name: str) -> Type[DQEngine]:
@@ -76,9 +80,10 @@ class EngineRegistry:
             )
 
         # 1. Explicit registry
-        if name in cls._explicit:
-            logger.debug("Found engine '%s' in explicit registry", name)
-            return cls._explicit[name]
+        with cls._lock:
+            if name in cls._explicit:
+                logger.debug("Found engine '%s' in explicit registry", name)
+                return cls._explicit[name]
 
         # 2. Convention-based discovery
         engine_class = cls._try_convention_import(name)

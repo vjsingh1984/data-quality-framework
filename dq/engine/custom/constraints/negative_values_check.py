@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """WideTablesNegativeValuesCheck constraint — finds negative values across wide tables."""
-import logging
-from typing import List, Tuple
+from __future__ import annotations
 
-import pyspark.sql.functions as F
-from pyspark.sql import DataFrame
+import logging
+from typing import TYPE_CHECKING, List, Tuple
+
+if TYPE_CHECKING:
+    from pyspark.sql import DataFrame
 
 from dq.engine.custom.constraint_registry import CustomConstraint
 
@@ -19,6 +21,8 @@ class WideTablesNegativeValuesCheck(CustomConstraint):
     def evaluate(
         self, dataframe: DataFrame, config: dict, spark_session
     ) -> Tuple[List[list], List[list]]:
+        from pyspark.sql import functions as F
+
         dq_dimension = config.get("dq_dimension", "Compliance")
         constraint = config.get("constraint", "WideTablesNegativeValuesCheck")
         level = config.get("level", "Warning")

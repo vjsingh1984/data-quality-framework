@@ -4,7 +4,6 @@
 """Configuration loading and conversion utilities."""
 from typing import Any, Dict, Optional
 
-import boto3
 import requests
 from pyhocon import ConfigTree
 
@@ -61,6 +60,8 @@ def load_from_s3(bucket: str, key: str) -> str:
     Returns:
         File contents as a UTF-8 string.
     """
+    import boto3
+
     session = boto3.session.Session()
     s3 = session.resource("s3")
     res = s3.Object(bucket, key)

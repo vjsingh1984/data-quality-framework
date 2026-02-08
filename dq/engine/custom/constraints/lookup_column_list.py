@@ -2,11 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """LookupBasedOnColumnNameList constraint — checks column names against a reference table."""
+from __future__ import annotations
+
 import logging
 import re
-from typing import List, Tuple
+from typing import TYPE_CHECKING, List, Tuple
 
-from pyspark.sql import DataFrame
+if TYPE_CHECKING:
+    from pyspark.sql import DataFrame
 
 from dq.engine.custom.constraint_registry import CustomConstraint
 

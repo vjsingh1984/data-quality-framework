@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """DistinctnessByGroup constraint — validates distinct counts within groups."""
-import logging
-from typing import List, Tuple
+from __future__ import annotations
 
-import pyspark.sql.functions as F
-from pyspark.sql import DataFrame
+import logging
+from typing import TYPE_CHECKING, List, Tuple
+
+if TYPE_CHECKING:
+    from pyspark.sql import DataFrame
 
 from dq.engine.custom.constraint_registry import CustomConstraint
 
@@ -76,6 +78,8 @@ class DistinctnessByGroup(CustomConstraint):
     def evaluate(
         self, dataframe: DataFrame, config: dict, spark_session
     ) -> Tuple[List[list], List[list]]:
+        from pyspark.sql import functions as F
+
         columns = config.get("columns", None)
         group_by = config.get("group_by", None)
         dq_dimension = config.get("dq_dimension", "Compliance")

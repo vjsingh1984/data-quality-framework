@@ -1,8 +1,7 @@
 # Copyright 2024 Data Quality Framework Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-
-from pyspark.sql import functions as F
+import os
 
 
 def save_to_repository(
@@ -20,15 +19,16 @@ def save_to_repository(
     Returns:
         None
     """
+    from pyspark.sql import functions as F
+
     partition_dataset = repoconfig.get("dataset", None)
     if partition_dataset is None:
-        df.show(truncate=False)
         raise ValueError("Dataset name is not provided in the configuration.")
 
     format = repoconfig.get("format", "delta")
     file_repo_config = repoconfig.get("file", {})
 
-    if format not in ["parquet", "csv", "json", "delta", "orc", "json"]:
+    if format not in ["parquet", "csv", "json", "delta", "orc"]:
         raise ValueError("Invalid format specified in the configuration.")
 
     partition_year = F.year(
@@ -47,7 +47,7 @@ def save_to_repository(
                 # Save to file
                 nextdf.coalesce(1).write.mode("append").format(format).partitionBy(
                     "dataset", "year"
-                ).save(path + "/" + metric_type_suffix)
+                ).save(os.path.join(path, metric_type_suffix))
 
     catalog_repo_config = repoconfig.get("catalog", {})
     if catalog_repo_config:
@@ -60,13 +60,19 @@ def save_to_repository(
                     raise ValueError("Table name is not provided in the configuration.")
                 else:
                     tablewithsuffix = table + "_" + metric_type_suffix
-                    dbname, tabname = tablewithsuffix.split(".")
-                    doesTableExistAlready = (
+                    parts = tablewithsuffix.split(".")
+                    if len(parts) != 2:
+                        raise ValueError(
+                            f"Table reference '{tablewithsuffix}' must be in "
+                            f"'database.table' format, got {len(parts)} part(s)."
+                        )
+                    dbname, tabname = parts
+                    table_exists_already = (
                         df.sparkSession._jsparkSession.catalog().tableExists(
                             dbname, tabname
                         )
                     )
-                    if doesTableExistAlready:
+                    if table_exists_already:
                         nextdf.coalesce(1).write.mode("append").format(format).option(
                             "mergeSchema", "true"
                         ).insertInto(tablewithsuffix)

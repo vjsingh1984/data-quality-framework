@@ -20,6 +20,7 @@ class TestEngineNameValidation:
             "custom",
             "schemavalidation",
             "greatexpectations",
+            "drules",
             "my_engine",
             "engine123",
             "a",

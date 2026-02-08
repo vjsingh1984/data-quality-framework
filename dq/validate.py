@@ -40,7 +40,8 @@ def validate_config(config_path: str) -> bool:
         else:
             # For s3://, http://, etc., we'd need additional handling
             logger.warning(
-                f"Remote config validation not fully supported for scheme: {parsed.scheme}"
+                "Remote config validation not fully supported for scheme: %s",
+                parsed.scheme,
             )
             return True
 
@@ -55,16 +56,16 @@ def validate_config(config_path: str) -> bool:
 
         for i, rule in enumerate(dqrules):
             if not rule.get("engine"):
-                logger.error(f"Rule {i}: Missing required key 'engine'")
+                logger.error("Rule %d: Missing required key 'engine'", i)
                 return False
             if not rule.get("checks"):
-                logger.warning(f"Rule {i}: No checks defined")
+                logger.warning("Rule %d: No checks defined", i)
 
         logger.info("Configuration is valid")
         return True
 
     except Exception as e:
-        logger.error(f"Configuration validation failed: {e}")
+        logger.error("Configuration validation failed: %s", e)
         return False
 
 

@@ -10,26 +10,6 @@ from dq.catalog.base import CatalogProvider
 logger = logging.getLogger(__name__)
 
 
-# Mapping from Glue column types to PySpark types
-_GLUE_TO_SPARK_TYPE_MAP = {
-    "string": "StringType",
-    "int": "IntegerType",
-    "integer": "IntegerType",
-    "bigint": "LongType",
-    "long": "LongType",
-    "smallint": "ShortType",
-    "short": "ShortType",
-    "tinyint": "ByteType",
-    "byte": "ByteType",
-    "float": "FloatType",
-    "double": "DoubleType",
-    "boolean": "BooleanType",
-    "binary": "BinaryType",
-    "date": "DateType",
-    "timestamp": "TimestampType",
-}
-
-
 def _parse_glue_type(glue_type_str):
     """Convert a Glue type string to a PySpark type instance.
 
@@ -243,7 +223,10 @@ class GlueCatalogProvider(CatalogProvider):
             try:
                 full_name = self._build_full_table_name(table_name, db_name)
                 return self._spark._jsparkSession.catalog().tableExists(full_name)
-            except Exception:
+            except Exception as e:
+                logger.debug(
+                    "Spark tableExists fallback failed for '%s': %s", full_name, e
+                )
                 return False
 
     def get_table_metadata(self, table_reference, database=None):

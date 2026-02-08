@@ -1,13 +1,14 @@
 # Copyright 2024 Data Quality Framework Contributors
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 import ast
 import json
+from typing import TYPE_CHECKING
 
-from pydeequ.checks import Check, CheckLevel, ConstrainableDataTypes
-from pydeequ.verification import VerificationSuite
-from pyhocon import ConfigTree
-from pyspark.sql import SparkSession
+if TYPE_CHECKING:
+    from pyhocon import ConfigTree
 
 
 class DeequCheck:
@@ -16,8 +17,6 @@ class DeequCheck:
     Supports both single-check mode (all constraints chained on one Check)
     and multi-check mode (one Check per constraint for granular reporting).
     """
-
-    _check_level_map = {"Warning": CheckLevel.Warning, "Error": CheckLevel.Error}
 
     def __init__(self, checks_config: ConfigTree, single_check_mode=False):
         self._checks_config = checks_config
@@ -95,9 +94,14 @@ class DeequCheck:
         except Exception as e:
             raise ValueError(f"Error evaluating lambda: {e}")
 
-    def apply_checks(
-        self, verification_run_builder: VerificationSuite, spark_session: SparkSession
-    ):
+    def apply_checks(self, verification_run_builder, spark_session):
+        from pydeequ.checks import Check, CheckLevel, ConstrainableDataTypes
+
+        check_level_map = {
+            "Warning": CheckLevel.Warning,
+            "Error": CheckLevel.Error,
+        }
+
         if self._single_check_mode:
             check = Check(
                 spark_session=spark_session,
@@ -115,16 +119,20 @@ class DeequCheck:
             hint = check_config.get("hint", None)
             kwargs = check_config.get("kwargs", None)
             if not (self._single_check_mode):
+                # Build description dict; fall back to string if JSON serialization fails
+                alias = check_config.get("alias", "*Unknown")
+                desc = check_config.get("description", "*Unknown")
+                try:
+                    description = json.dumps(
+                        {"alias": alias, "description": desc, "constraint": constraint}
+                    )
+                except (TypeError, ValueError):
+                    # Fallback if values aren't JSON-serializable
+                    description = f"{alias}: {desc}"
                 check = Check(
                     spark_session=spark_session,
-                    level=self._check_level_map.get(check_config.get("level", "Error")),
-                    description=json.dumps(
-                        {
-                            "alias": check_config.get("alias", "*Unknown"),
-                            "description": check_config.get("description", "*Unknown"),
-                            "constraint": constraint,
-                        }
-                    ),
+                    level=check_level_map.get(check_config.get("level", "Error")),
+                    description=description,
                 )
             # Apply constraint dynamically
             # Refer following githb link for complete list of supported python-deequ checks.

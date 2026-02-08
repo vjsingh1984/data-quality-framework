@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 from dq.catalog.catalog_factory import CatalogFactory
 from dq.config.config_loader import AutoConfigLoader, ConfigLoader
 from dq.engine.engine_loader import EngineLoader
+from dq.exceptions import ConfigurationError
 from dq.resolver import (
     CatalogProviderResolver,
     ChainedResolver,
@@ -84,7 +85,9 @@ class DQFramework:
                 if df is not None:
                     dataframes[df_name] = df
             except Exception as e:
-                logger.warning("Could not load DataFrame '%s': %s", df_name, e)
+                raise ConfigurationError(
+                    f"Failed to load DataFrame '{df_name}': {e}"
+                ) from e
 
         if self.default_dataframe is not None and "default" not in dataframes:
             dataframes["default"] = self.default_dataframe
@@ -119,6 +122,7 @@ class DQFramework:
         from pydeequ.repository import ResultKey
 
         current_time_in_millis = ResultKey.current_milli_time()
+        application_id = self._spark.sparkContext.applicationId
         cumulative_metrics = []
 
         for rule_config in self._config.get("dqframework.dqrules", []):
@@ -140,7 +144,7 @@ class DQFramework:
                 )
                 for metric in summary_metrics:
                     metric["ts"] = current_time_in_millis
-                    metric["jobid"] = self._spark.sparkContext.applicationId
+                    metric["jobid"] = application_id
                     if constants.DQ_METRICS_RESULT_SUCCESS_KEY in metric:
                         if not metric[constants.DQ_METRICS_RESULT_SUCCESS_KEY]:
                             logger.warning("Check failed: %s", json.dumps(metric))

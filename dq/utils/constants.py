@@ -6,6 +6,7 @@
 The PyDeequ datatype map is lazily loaded to avoid forcing a pydeequ
 dependency at core import time.
 """
+import functools
 
 DQ_ENGINE_NAME = "engine"
 DQ_RULE_NAME = "name"
@@ -30,6 +31,11 @@ DQ_SINGLE_CHECK_MODE = "single_check_mode"
 SCHEMA_VALIDATION_CHECK_FK_THRESHOLD_COUNT_KEY = "threshold_list_count"
 SCHEMA_VALIDATION_CHECK_FK_THRESHOLD_COUNT_VALUE = 1024
 SCHEMA_VALIDATION_CHECK_FK_USE_LIST_KEY = "use_list_check"
+# Threshold for switching from list-based (isContainedIn) to join-based FK validation.
+# List-based validation builds an IN clause with all reference values, which is
+# efficient for small reference tables but becomes memory-intensive for large ones.
+# Above this threshold, the framework uses a left outer join instead.
+SCHEMA_VALIDATION_CHECK_FK_THRESHOLD_COUNT_VALUE = 1024
 DQ_METRICS_RESULT_SUCCESS_KEY = "success"
 SCHEMA_VALIDATION_OVERRIDE_CONFIG_PATTERN_KEY = "pattern"
 SCHEMA_VALIDATION_OVERRIDE_KEY = "overrides"
@@ -37,8 +43,13 @@ SCHEMA_VALIDATION_OVERRIDE_CONFIG_REPLACE_KEY = "replace"
 SCHEMA_VALIDATION_NOT_NULL_COLUMNS_KEY = "not_null_columns"
 
 
-def _get_pydeequ_datatype_map():
-    """Lazily build the PyDeequ datatype map to avoid import-time dependency."""
+@functools.lru_cache(maxsize=1)
+def get_pydeequ_datatype_map():
+    """Lazily build and cache the PyDeequ datatype map.
+
+    Uses ``lru_cache`` so the map is built once on first access and
+    the pydeequ import is deferred until actually needed.
+    """
     from pydeequ.checks import ConstrainableDataTypes
 
     return {
@@ -52,18 +63,6 @@ def _get_pydeequ_datatype_map():
         "BooleanType": ConstrainableDataTypes.Boolean,
         "DecimalType": ConstrainableDataTypes.Numeric,
     }
-
-
-# Lazy-loaded cache
-_PYDEEQU_DATATYPE_MAP_CACHE = None
-
-
-def get_pydeequ_datatype_map():
-    """Get the PyDeequ datatype map (cached after first call)."""
-    global _PYDEEQU_DATATYPE_MAP_CACHE
-    if _PYDEEQU_DATATYPE_MAP_CACHE is None:
-        _PYDEEQU_DATATYPE_MAP_CACHE = _get_pydeequ_datatype_map()
-    return _PYDEEQU_DATATYPE_MAP_CACHE
 
 
 # Fixed typo: SCHEVA -> SCHEMA (backward compat aliases below)

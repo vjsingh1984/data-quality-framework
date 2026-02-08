@@ -57,7 +57,5 @@ class EngineLoader:
             engine_class = EngineRegistry.get_engine_class(name)
             logger.debug("Loaded engine %s", engine_class.__name__)
             return engine_class(*args, **kwargs)
-        except ValueError:
-            raise
         except ImportError as e:
             raise ImportError(f"Engine module for '{name}' not found: {e}") from e

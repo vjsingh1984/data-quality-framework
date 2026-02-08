@@ -1,17 +1,20 @@
 # Copyright 2024 Data Quality Framework Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-import logging
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
 
-from pydeequ.repository import ResultKey
-from pydeequ.verification import VerificationResult, VerificationSuite
+import logging
+import warnings
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
 from pyhocon import ConfigTree
-from pyspark.sql import DataFrame
 
 from dq.engine.deequ.deequ_check import DeequCheck
 from dq.engine.dq_engine import DQEngine
 from dq.utils import constants, repository_utils
+
+if TYPE_CHECKING:
+    from pyspark.sql import DataFrame
 
 logger = logging.getLogger(__name__)
 
@@ -35,13 +38,23 @@ class DeequEngine(DQEngine):
         Args:
             dataframe: Spark DataFrame to validate.
             repository: Optional repository config for persisting metrics.
+                Deprecated: Use ``repository_writer`` in constructor instead.
 
         Returns:
             List of metric dicts with ``check``, ``success``, ``details`` keys.
         """
+        if repository is not None:
+            warnings.warn(
+                "The 'repository' parameter is deprecated. "
+                "Use 'repository_writer' in the engine constructor instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         rule_name = self._config.get(constants.DQ_RULE_NAME, "Unknown")
         engine_name = self._config.get(constants.DQ_ENGINE_NAME, "Unknown")
         logger.info("Processing %s with %s Engine", rule_name, engine_name)
+
+        from pydeequ.verification import VerificationResult, VerificationSuite
 
         deequ_check = DeequCheck(
             checks_config=self._config.get("checks", []),
@@ -64,33 +77,35 @@ class DeequEngine(DQEngine):
         else:
             logger.warning("Data quality checks failed.")
 
-        successMetrics = VerificationResult.successMetricsAsDataFrame(
+        success_metrics = VerificationResult.successMetricsAsDataFrame(
             spark_session=self._sparkSession,
             verificationResult=verification_result,
         )
-        checkVerifications = VerificationResult.checkResultsAsDataFrame(
+        check_verifications = VerificationResult.checkResultsAsDataFrame(
             spark_session=self._sparkSession,
             verificationResult=verification_result,
         )
 
         if repository:
+            from pydeequ.repository import ResultKey
+
             current_milli_time = ResultKey.current_milli_time()
             repository_utils.save_to_repository(
                 repository,
-                successMetrics,
+                success_metrics,
                 constants.DQ_REPOSITORY_METRICS,
                 current_milli_time,
             )
             repository_utils.save_to_repository(
                 repository,
-                checkVerifications,
+                check_verifications,
                 constants.DQ_REPOSITORY_VERIFICATIONS,
                 current_milli_time,
             )
 
-        summarymetrics = []
-        for check in checkVerifications.collect():
-            summarymetrics.append(
+        summary_metrics = []
+        for check in check_verifications.collect():
+            summary_metrics.append(
                 {
                     "check": check["check"],
                     "success": check["check_status"] == "Success",
@@ -98,4 +113,4 @@ class DeequEngine(DQEngine):
                 }
             )
 
-        return summarymetrics
+        return summary_metrics
