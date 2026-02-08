@@ -71,9 +71,9 @@ class SchemaValidationCheck:
 
     def get_joined_dataframe_from_foreign_key_constraints(self, df: DataFrame):
         """
-        Sequentially apply foregin key constraints to the given Dataframe using left outer join
+        Sequentially apply foreign key constraints to the given Dataframe using left outer join
         Args:
-        - df : The input Dataframe to apply foregin key constraints on
+        - df : The input Dataframe to apply foreign key constraints on
         Returns:
         - The joined dataframe after applying left outer joins wherever applicable.
         """
@@ -148,7 +148,7 @@ class SchemaValidationCheck:
             else:
                 check = check.satisfies(
                     columnCondition=f"{ref_column}_alias IS NOT NULL",
-                    constraint_name=f"{source_column} refential integrity check against {full_table_name}.{ref_column}",
+                    constraint_name=f"{source_column} referential integrity check against {full_table_name}.{ref_column}",
                     assertion=lambda k: k == 1.0,
                     hint=f"{source_column} must exist in {full_table_name}.{ref_column}",
                 )
