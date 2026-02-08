@@ -20,8 +20,8 @@ from dq.utils import constants, repository_utils
 logger = logging.getLogger(__name__)
 
 
-class CustomEngine(DQEngine):
-    """Engine providing custom business-rule constraints.
+class ConstraintEngine(DQEngine):
+    """Engine that executes registered constraint validations.
 
     Dispatches to constraint implementations registered in the
     ``ConstraintRegistry``. Built-in constraints:
@@ -41,11 +41,11 @@ class CustomEngine(DQEngine):
         super().__init__(config)
 
     def _validate_config(self) -> None:
-        """Validate CustomEngine configuration at init time."""
+        """Validate ConstraintEngine configuration at init time."""
         checks = self._config.get("checks", [])
         if not checks:
             raise ConfigurationError(
-                "CustomEngine requires 'checks' in configuration with at least one check."
+                "ConstraintEngine requires 'checks' in configuration with at least one check."
             )
 
         for i, check in enumerate(checks):

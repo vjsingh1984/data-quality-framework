@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from dq.engine.custom.custom_engine import CustomEngine
+from dq.engine.custom.custom_engine import ConstraintEngine
 from dq.engine.dq_engine import DQEngine
 
 
@@ -150,11 +150,11 @@ class TestLifecycleHooks:
         DQEngine.after_apply(engine, mock_df, [])  # Should not raise
 
 
-class TestCustomEngineLifecycle:
-    """Tests for CustomEngine lifecycle hooks implementation."""
+class TestConstraintEngineLifecycle:
+    """Tests for ConstraintEngine lifecycle hooks implementation."""
 
     def test_custom_engine_caches_reference_dataframes(self):
-        """Test that CustomEngine caches reference DataFrames in before_apply."""
+        """Test that ConstraintEngine caches reference DataFrames in before_apply."""
         from pyhocon import ConfigFactory
 
         config = ConfigFactory.parse_string(
@@ -181,7 +181,7 @@ class TestCustomEngineLifecycle:
         mock_spark.table.return_value = mock_ref_df
 
         # Create engine and call before_apply
-        engine = CustomEngine(config)
+        engine = ConstraintEngine(config)
         engine.before_apply(mock_df)
 
         # Verify reference table was cached
@@ -190,7 +190,7 @@ class TestCustomEngineLifecycle:
         assert "ref_test_ref_table" in engine._cache
 
     def test_custom_engine_cleanup_in_after_apply(self):
-        """Test that CustomEngine unpersists cached DataFrames in after_apply."""
+        """Test that ConstraintEngine unpersists cached DataFrames in after_apply."""
         from pyhocon import ConfigFactory
 
         config = ConfigFactory.parse_string(
@@ -204,7 +204,7 @@ class TestCustomEngineLifecycle:
         )
 
         # Create engine with cached data
-        engine = CustomEngine(config)
+        engine = ConstraintEngine(config)
         mock_df = MagicMock()
 
         # Add a mock DataFrame to cache that has unpersist method
@@ -222,7 +222,7 @@ class TestCustomEngineLifecycle:
         assert engine._cache == {}
 
     def test_custom_engine_handles_missing_unpersist(self):
-        """Test that CustomEngine handles cached objects without unpersist method."""
+        """Test that ConstraintEngine handles cached objects without unpersist method."""
         from pyhocon import ConfigFactory
 
         config = ConfigFactory.parse_string(
@@ -236,7 +236,7 @@ class TestCustomEngineLifecycle:
         )
 
         # Create engine
-        engine = CustomEngine(config)
+        engine = ConstraintEngine(config)
         mock_df = MagicMock()
 
         # Add a non-DataFrame object to cache (no unpersist method)

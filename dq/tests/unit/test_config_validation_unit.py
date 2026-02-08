@@ -6,7 +6,7 @@
 import pytest
 from pyhocon import ConfigFactory
 
-from dq.engine.custom.custom_engine import CustomEngine
+from dq.engine.custom.custom_engine import ConstraintEngine
 from dq.engine.deequ.deequ_engine import DeequEngine
 from dq.engine.drules.drules_engine import DrulesEngine
 from dq.engine.greatexpectations.greatexpectations_engine import (
@@ -64,20 +64,20 @@ class TestDeequEngineValidation:
         assert engine is not None
 
 
-class TestCustomEngineValidation:
-    """Tests for CustomEngine config validation."""
+class TestConstraintEngineValidation:
+    """Tests for ConstraintEngine config validation."""
 
     def test_requires_checks_key(self):
-        """Test that CustomEngine requires 'checks' in config."""
+        """Test that ConstraintEngine requires 'checks' in config."""
         config = ConfigFactory.parse_string("{}")
         with pytest.raises(ConfigurationError, match="requires 'checks'"):
-            CustomEngine(config)
+            ConstraintEngine(config)
 
     def test_checks_must_not_be_empty(self):
         """Test that 'checks' must contain at least one check."""
         config = ConfigFactory.parse_string("{ checks: [] }")
         with pytest.raises(ConfigurationError, match="requires 'checks'"):
-            CustomEngine(config)
+            ConstraintEngine(config)
 
     def test_each_check_must_have_constraint(self):
         """Test that each check must have a 'constraint' key."""
@@ -92,7 +92,7 @@ class TestCustomEngineValidation:
             """
         )
         with pytest.raises(ConfigurationError, match="missing required 'constraint'"):
-            CustomEngine(config)
+            ConstraintEngine(config)
 
     def test_constraint_must_be_registered(self):
         """Test that unknown constraints raise an error."""
@@ -108,7 +108,7 @@ class TestCustomEngineValidation:
         with pytest.raises(
             ConfigurationError, match="Unknown constraint 'UnknownConstraint'"
         ):
-            CustomEngine(config)
+            ConstraintEngine(config)
 
     def test_known_constraint_passes(self):
         """Test that known constraint passes validation."""
@@ -122,7 +122,7 @@ class TestCustomEngineValidation:
             """
         )
         # Should not raise
-        engine = CustomEngine(config)
+        engine = ConstraintEngine(config)
         assert engine is not None
 
 

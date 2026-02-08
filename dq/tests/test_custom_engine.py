@@ -8,7 +8,7 @@ os.environ["SPARK_VERSION"] = "3.5"
 import pytest
 from pyhocon import ConfigFactory
 
-from dq.engine.custom.custom_engine import CustomEngine
+from dq.engine.custom.custom_engine import ConstraintEngine
 
 
 @pytest.fixture
@@ -278,7 +278,7 @@ def multi_column_dataframe_rate_of_change(spark):
 
 @pytest.mark.spark
 def test_distinct_groupby_constraint(spark, custom_config, sample_dataframe_group):
-    custom_engine = CustomEngine(custom_config)
+    custom_engine = ConstraintEngine(custom_config)
     results = custom_engine.apply(sample_dataframe_group, None)
     # results.show()
     print(len(results))
@@ -299,7 +299,7 @@ def test_distinct_groupby_constraint(spark, custom_config, sample_dataframe_grou
 def test_rate_of_change(
     spark, custom_config_rate_of_change, multi_column_dataframe_rate_of_change
 ):
-    custom_engine = CustomEngine(custom_config_rate_of_change)
+    custom_engine = ConstraintEngine(custom_config_rate_of_change)
     results = custom_engine.apply(multi_column_dataframe_rate_of_change, None)
     # results.show()
     print(results)
@@ -318,7 +318,7 @@ def test_rate_of_change(
 def test_wide_col_negative_values(
     spark, custom_config_wide_col_negative_values, numeric_dataframe
 ):
-    custom_engine = CustomEngine(custom_config_wide_col_negative_values)
+    custom_engine = ConstraintEngine(custom_config_wide_col_negative_values)
     results = custom_engine.apply(numeric_dataframe, None)
     print(results)
     overall_success = True

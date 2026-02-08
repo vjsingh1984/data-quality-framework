@@ -108,7 +108,7 @@ class TestImprovedClassNameConstruction:
         "name,expected",
         [
             ("deequ", "DeequEngine"),
-            ("custom", "CustomEngine"),
+            ("custom", "CustomEngine"),  # Class name building produces CustomEngine
             ("drules", "DrulesEngine"),
             ("my_engine", "MyEngineEngine"),
             ("schema_validation", "SchemaValidationEngine"),
