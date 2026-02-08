@@ -138,7 +138,7 @@ class DQFramework:
             )
 
             for df_name in df_names:
-                dataframe = self.get_dataframe(df_name)
+                dataframe = self.resolve_dataframe(df_name)
                 summary_metrics = engine.apply(
                     dataframe, repository=self._config.get("dqframework.repository", {})
                 )
@@ -159,17 +159,17 @@ class DQFramework:
 
         return cumulative_metrics
 
-    def get_dataframe(self, df_name):
-        """Retrieve a DataFrame by logical name.
+    def resolve_dataframe(self, dataframe_name):
+        """Resolve a logical DataFrame name to an actual DataFrame.
 
         Uses the configured resolver chain. Checks in order:
-        1. Default DataFrame (if df_name is "default")
+        1. Default DataFrame (if dataframe_name is "default")
         2. Pre-loaded DataFrames from config
         3. Spark catalog (temp views / tables)
         4. Configured catalog provider
 
         Args:
-            df_name: Logical DataFrame name.
+            dataframe_name: Logical DataFrame name.
 
         Returns:
             Spark DataFrame.
@@ -177,4 +177,4 @@ class DQFramework:
         Raises:
             DataFrameNotFoundError: If DataFrame cannot be found.
         """
-        return self._resolver.resolve(df_name)
+        return self._resolver.resolve(dataframe_name)
