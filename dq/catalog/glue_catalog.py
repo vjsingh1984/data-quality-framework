@@ -296,14 +296,14 @@ class GlueCatalogProvider(CatalogProvider):
 
         fields = []
         for col in glue_columns + partition_keys:
-            col_name = col["Name"]
+            column_name = col["Name"]
             col_type = col["Type"]
             comment = col.get("Comment", "")
             spark_type = _parse_glue_type(col_type)
             # Glue does not track nullable per-column; default to True
             fields.append(
                 StructField(
-                    col_name, spark_type, nullable=True, metadata={"comment": comment}
+                    column_name, spark_type, nullable=True, metadata={"comment": comment}
                 )
             )
 

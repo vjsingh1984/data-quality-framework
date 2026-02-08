@@ -46,8 +46,8 @@ class LookupColumnList(CustomConstraint):
             raise ValueError(f"Invalid reference column name: '{ref_columns}'")
 
         df_ref = spark_session.sql(f"SELECT {ref_columns} FROM {ref_table}")
-        colnameList = df_ref.rdd.flatMap(lambda x: x).collect()
-        colList = list(map(str, colnameList))
+        column_name_list = df_ref.rdd.flatMap(lambda x: x).collect()
+        column_list = list(map(str, column_name_list))
 
         if source == "timeSeries":
             source = ""
@@ -56,7 +56,7 @@ class LookupColumnList(CustomConstraint):
         check_verifications = []
 
         for column in dataframe.columns:
-            if column in colList:
+            if column in column_list:
                 metric_results.append(
                     [
                         "MultiColumn",

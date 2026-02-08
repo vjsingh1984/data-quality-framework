@@ -88,25 +88,25 @@ class NativeSchemaValidator:
         df_schema = df.schema
 
         for col_config in columns:
-            col_name = col_config.get("name")
-            if not col_name:
+            column_name = col_config.get("name")
+            if not column_name:
                 continue
 
-            if col_name not in df_schema:
+            if column_name not in df_schema:
                 summary.add_result(
                     ValidationResult(
-                        check_name=f"DatatypeCheck.{col_name}",
+                        check_name=f"DatatypeCheck.{column_name}",
                         constraint="Datatype",
                         success=False,
                         details={
-                            "error": f"Column '{col_name}' not found in DataFrame"
+                            "error": f"Column '{column_name}' not found in DataFrame"
                         },
-                        assertion=f"Column '{col_name}' should exist",
+                        assertion=f"Column '{column_name}' should exist",
                     )
                 )
                 continue
 
-            actual_type = str(df_schema[col_name].dataType)
+            actual_type = str(df_schema[column_name].dataType)
             expected_type = col_config.get("type")
 
             if expected_type:
@@ -118,15 +118,15 @@ class NativeSchemaValidator:
 
                 summary.add_result(
                     ValidationResult(
-                        check_name=f"DatatypeCheck.{col_name}",
+                        check_name=f"DatatypeCheck.{column_name}",
                         constraint="Datatype",
                         success=success,
                         details={
-                            "column": col_name,
+                            "column": column_name,
                             "expected_type": expected_type,
                             "actual_type": actual_type,
                         },
-                        assertion=f"Column '{col_name}' should be {expected_type}",
+                        assertion=f"Column '{column_name}' should be {expected_type}",
                     )
                 )
 
@@ -146,8 +146,8 @@ class NativeSchemaValidator:
         columns = table_schema.get("columns", [])
 
         for col_config in columns:
-            col_name = col_config.get("name")
-            if not col_name or col_name not in df.schema:
+            column_name = col_config.get("name")
+            if not column_name or column_name not in df.schema:
                 continue
 
             nullable = col_config.get("nullable")
@@ -155,27 +155,27 @@ class NativeSchemaValidator:
                 continue
 
             # Check schema first (faster)
-            schema_nullable = df.schema[col_name].nullable
+            schema_nullable = df.schema[column_name].nullable
 
             if nullable and not schema_nullable:
                 # Schema says not nullable but config expects nullable - OK
                 continue
             elif not nullable and schema_nullable:
                 # Schema allows nulls but config doesn't - need to check data
-                null_count = df.select(col_name).filter(f"{col_name} IS NULL").count()
+                null_count = df.select(column_name).filter(f"{column_name} IS NULL").count()
 
                 success = null_count == 0
                 summary.add_result(
                     ValidationResult(
-                        check_name=f"NullableCheck.{col_name}",
+                        check_name=f"NullableCheck.{column_name}",
                         constraint="NotNull",
                         success=success,
                         details={
-                            "column": col_name,
+                            "column": column_name,
                             "null_count": null_count,
                             "total_rows": df.count(),
                         },
-                        assertion=f"Column '{col_name}' should not contain null values",
+                        assertion=f"Column '{column_name}' should not contain null values",
                     )
                 )
 
@@ -195,8 +195,8 @@ class NativeSchemaValidator:
         columns = table_schema.get("columns", [])
 
         for col_config in columns:
-            col_name = col_config.get("name")
-            if not col_name or col_name not in df.schema:
+            column_name = col_config.get("name")
+            if not column_name or column_name not in df.schema:
                 continue
 
             unique = col_config.get("unique", False)
@@ -205,23 +205,23 @@ class NativeSchemaValidator:
 
             # Check uniqueness by comparing total count with distinct count
             total_count = df.count()
-            distinct_count = df.select(col_name).distinct().count()
+            distinct_count = df.select(column_name).distinct().count()
 
             success = total_count == distinct_count
             duplicate_count = total_count - distinct_count
 
             summary.add_result(
                 ValidationResult(
-                    check_name=f"UniqueCheck.{col_name}",
+                    check_name=f"UniqueCheck.{column_name}",
                     constraint="Unique",
                     success=success,
                     details={
-                        "column": col_name,
+                        "column": column_name,
                         "total_rows": total_count,
                         "distinct_rows": distinct_count,
                         "duplicate_rows": duplicate_count,
                     },
-                    assertion=f"Column '{col_name}' should contain unique values",
+                    assertion=f"Column '{column_name}' should contain unique values",
                 )
             )
 
