@@ -1,8 +1,8 @@
 # Data Quality Framework - Roadmap Tracker
 
 **Last Updated**: 2026-02-07
-**Status**: Tracking remaining design/architecture improvements and vision items
-**Completed**: All critical, high, medium, and low-priority implementation shortcomings (Phases A-D)
+**Status**: All design issues (D2-D8) complete! Only vision items (V1-V6) remain
+**Completed**: All critical, high, medium, and low-priority implementation shortcomings + all design issues
 
 ---
 
@@ -87,7 +87,6 @@
                               ┌─────────────────────────┐
                               │   Remaining Issues      │
                               ├─────────────────────────┤
-                              │ D3: Registry pattern    │
                               │ V1-V6: Vision items     │
                               └─────────────────────────┘
 ```
@@ -356,13 +355,10 @@ All 173 unit tests pass
 **ID**: D3
 **Priority**: Low
 **Category**: Design
-**Status**: **OPEN**
+**Status**: ✅ **COMPLETED** (2026-02-07)
 
 #### Description
-Three registries exist with different patterns:
-- `EngineRegistry` - Uses `_lock` for thread safety, has `get_engine_class()`, `unregister()`
-- `ConstraintRegistry` - Uses `_lock`, but has `get()` instead of `get_constraint_class()`
-- `RuleRegistry` - Uses `_lock`, has `get()` instead of `get_rule_class()`
+Three registries existed with different patterns and inconsistent APIs. This made it confusing for contributors adding new registries and led to code duplication.
 
 #### Current State
 ```python
@@ -433,68 +429,152 @@ rule_class = RuleRegistry.get(name)  # Returns class
 └──────────────────────────────────────────────────────────────┘
 ```
 
-#### Impact
-- Inconsistent API surface
-- Confusing for contributors adding new registries
+#### Implementation Details
 
-#### Recommended Solution
+**Created base registry class with thread-safe operations:**
 
-1. **Create base registry class**:
 ```python
+# dq/utils/registry_base.py
 class GenericRegistry(Generic[T]):
+    """Base registry class for type-safe registration and lookup.
+
+    Provides thread-safe registration, retrieval, and listing of items.
+    Subclasses inherit with the specific type: class MyRegistry(GenericRegistry[MyType]).
+    """
     _registry: Dict[str, Type[T]] = {}
     _lock = threading.Lock()
 
     @classmethod
     def register(cls, name: str, item: Type[T]) -> None:
+        normalized_name = name.lower()
+        registry = cls._get_registry()
         with cls._lock:
-            cls._registry[name.lower()] = item
+            registry[normalized_name] = item
 
     @classmethod
     def get(cls, name: str) -> Type[T]:
+        normalized_name = name.lower()
+        registry = cls._get_registry()
         with cls._lock:
-            if name not in cls._registry:
-                available = ', '.join(cls._registry.keys())
+            if normalized_name not in registry:
+                available = ", ".join(registry.keys())
                 raise KeyError(f"Unknown '{name}'. Available: {available}")
-            return cls._registry[name]
+            return registry[normalized_name]
 
     @classmethod
     def unregister(cls, name: str) -> None:
+        normalized_name = name.lower()
+        registry = cls._get_registry()
         with cls._lock:
-            cls._registry.pop(name.lower(), None)
+            registry.pop(normalized_name, None)
+
+    @classmethod
+    def is_registered(cls, name: str) -> bool:
+        normalized_name = name.lower()
+        registry = cls._get_registry()
+        with cls._lock:
+            return normalized_name in registry
 
     @classmethod
     def list_items(cls) -> List[str]:
-        return list(cls._registry.keys())
-```
+        registry = cls._get_registry()
+        with cls._lock:
+            return list(registry.keys())
 
-2. **Update all registries to inherit**:
-```python
-class EngineRegistry(GenericRegistry[DQEngine]):
     @classmethod
-    def get_engine_class(cls, name: str) -> Type[DQEngine]:
-        return cls.get(name)  # Alias for backward compat
+    def clear(cls) -> None:
+        registry = cls._get_registry()
+        with cls._lock:
+            registry.clear()
 
-    # Add convention discovery logic here
+    @classmethod
+    def _get_registry(cls) -> Dict[str, Type[T]]:
+        """Get the registry dict for this class.
 
-class ConstraintRegistry(GenericRegistry[CustomConstraint]):
-    pass  # Inherits all methods
-
-class RuleRegistry(GenericRegistry[DRule]):
-    pass  # Inherits all methods
+        Allows subclasses to define alternate names like _constraints or _rules.
+        """
+        return cls._registry
 ```
 
-#### Files to Modify
-- `dq/engine/engine_registry.py`
-- `dq/engine/custom/constraint_registry.py`
-- `dq/engine/drules/rule_registry.py`
-- Create new: `dq/utils/registry_base.py`
+**Updated all registries to inherit from GenericRegistry:**
 
-#### Estimated Effort
-1 day
+```python
+# dq/engine/custom/constraint_registry.py
+class ConstraintRegistry(GenericRegistry[CustomConstraint]):
+    _constraints: Dict[str, Type[CustomConstraint]] = {}
 
-#### Dependencies
-- None
+    @classmethod
+    def _get_registry(cls):
+        """Return _constraints for backward compatibility."""
+        return cls._constraints
+
+    @classmethod
+    def list_constraints(cls) -> List[str]:
+        """Alias for list_items() for backward compatibility."""
+        return cls.list_items()
+
+# dq/engine/drules/rule_registry.py
+class RuleRegistry(GenericRegistry[DRule]):
+    _rules: Dict[str, Type[DRule]] = {}
+
+    @classmethod
+    def _get_registry(cls):
+        return cls._rules
+
+    @classmethod
+    def get(cls, name: str) -> Type[DRule]:
+        """Override to provide rule-specific error message."""
+        normalized_name = name.lower()
+        registry = cls._get_registry()
+        with cls._lock:
+            if normalized_name not in registry:
+                available = ", ".join(registry.keys())
+                raise KeyError(f"Unknown rule type '{name}'. Available: {available}")
+            return registry[normalized_name]
+
+    @classmethod
+    def list_rules(cls) -> List[str]:
+        return cls.list_items()
+
+# dq/engine/engine_registry.py
+class EngineRegistry(GenericRegistry["DQEngine"]):
+    _explicit: Dict[str, Type["DQEngine"]] = {}
+
+    @classmethod
+    def _get_registry(cls):
+        return cls._explicit
+
+    @classmethod
+    def get_engine_class(cls, name: str) -> Type["DQEngine"]:
+        """Look up an engine class by name.
+
+        Tries in order:
+        1. Explicit registry
+        2. Convention-based import (dq.engine.{name}.{name}_engine)
+        3. Entry points (dq.engines group)
+        """
+        name = name.lower()
+        if cls.is_registered(name):
+            return super().get(name)
+        engine_class = cls._try_convention_import(name)
+        if engine_class is not None:
+            return engine_class
+        engine_class = cls._try_entry_points(name)
+        if engine_class is not None:
+            return engine_class
+        raise ImportError(
+            f"Engine '{name}' not found via registry, convention import, or entry points."
+        )
+```
+
+**Files Modified:**
+- Created: `dq/utils/registry_base.py`
+- Updated: `dq/engine/custom/constraint_registry.py`
+- Updated: `dq/engine/drules/rule_registry.py`
+- Updated: `dq/engine/engine_registry.py`
+- Created: `dq/tests/unit/test_registry_base_unit.py` (11 tests)
+
+**Commit:** `530115a` - All 193 unit tests pass
 
 ---
 
@@ -1293,6 +1373,7 @@ No native profiling capabilities. Users must manually:
 
 | Date | Change | Author |
 |------|--------|--------|
+| 2026-02-07 | Completed D3: Dual Registry Pattern - Created GenericRegistry base class | Claude (Sonnet 4.5) |
 | 2026-02-07 | Completed D4: SchemaValidation-Deequ Decoupling | Claude (Sonnet 4.5) |
 | 2026-02-07 | Completed D2: Return Type Variance | Claude (Sonnet 4.5) |
 | 2026-02-07 | Completed D6: Config Validation Split | Claude (Sonnet 4.5) |
