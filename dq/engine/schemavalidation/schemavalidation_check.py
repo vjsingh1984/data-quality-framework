@@ -510,9 +510,9 @@ class SchemaValidationCheck:
         """
         match = re.match(r"(\w+Type)(\(([\d,]+)\))", datatype)
         if match:
-            basedatatype = match.group(1)
+            base_datatype = match.group(1)
             parameters = [int(re.sub(r"\D", "", i)) for i in match.group(2).split(",")]
-            return basedatatype, parameters
+            return base_datatype, parameters
         else:
             return datatype.rstrip("()"), None
 

@@ -138,25 +138,25 @@ def test_schemavalidation_engine_load_success(dqrule_schemavalidation_config):
 
 @pytest.mark.spark
 def test_notdefined_engine_load_exception(dqrule_notdefined_config):
-    exceptionOccured = False
-    importerror = False
-    attributeerror = False
+    exception_occurred = False
+    import_error = False
+    attribute_error = False
 
     try:
         engine = process_engine_load_with_config(config=dqrule_notdefined_config)
     except ImportError as e:
-        exceptionOccured = True
-        importerror = True
+        exception_occurred = True
+        import_error = True
         print(e)
     except AttributeError as e:
-        exceptionOccured = True
-        attributeerror = True
+        exception_occurred = True
+        attribute_error = True
         print(e)
     except Exception as e:
-        exceptionOccured = True
+        exception_occurred = True
         print(e)
     else:
-        print("Non Exception Occured")
+        print("Non Exception Occurred")
     finally:
-        assert True == exceptionOccured
-        assert True == (importerror or attributeerror)
+        assert True == exception_occurred
+        assert True == (import_error or attribute_error)

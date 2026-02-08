@@ -64,10 +64,10 @@ def split_compound_word(word: str) -> List[str]:
                 remaining = remaining[len(pattern) :]
             else:
                 # Check if pattern is in the middle
-                idx = remaining.find(pattern)
-                if idx > 0:
-                    parts_list.append(remaining[:idx])
-                    remaining = remaining[idx:]
+                index = remaining.find(pattern)
+                if index > 0:
+                    parts_list.append(remaining[:index])
+                    remaining = remaining[index:]
 
                 parts_list.extend(parts)
                 remaining = remaining[len(pattern) :]
