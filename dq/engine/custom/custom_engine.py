@@ -35,10 +35,10 @@ class CustomEngine(DQEngine):
     ``ConstraintRegistry.register(name, cls)``.
     """
 
-    def __init__(self, config, dqts: Optional[int] = None):
+    def __init__(self, config):
         self._config = config
         self._spark_session = None  # Will be set in apply()
-        super().__init__(config, dqts)
+        super().__init__(config)
 
     def _validate_config(self) -> None:
         """Validate CustomEngine configuration at init time."""

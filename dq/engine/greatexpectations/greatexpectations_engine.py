@@ -43,8 +43,8 @@ class GreatExpectationsEngine(DQEngine):
     defined in the HOCON configuration.
     """
 
-    def __init__(self, config: ConfigTree, dqts: Optional[int] = None):
-        super().__init__(config, dqts)
+    def __init__(self, config: ConfigTree):
+        super().__init__(config)
 
     def _validate_config(self) -> None:
         """Validate expectations configuration at init time (fail-fast)."""

@@ -67,11 +67,9 @@ class DQEngine(ABC):
     def __init__(
         self,
         config: ConfigTree,
-        dqts: Optional[int] = None,
         repository_writer: Optional[RepositoryWriter] = None,
     ):
         self._config = config
-        self._dqts = dqts
         self._cache = {}  # Cache for engine-specific data (DFs, temp views, etc.)
         if repository_writer is not None:
             self._repository_writer = repository_writer

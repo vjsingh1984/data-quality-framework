@@ -30,8 +30,8 @@ class DrulesEngine(DQEngine):
     via ``RuleRegistry.register(name, cls)``.
     """
 
-    def __init__(self, config: ConfigTree, dqts: Optional[int] = None):
-        super().__init__(config, dqts)
+    def __init__(self, config: ConfigTree):
+        super().__init__(config)
 
     def _validate_config(self) -> None:
         """Validate all check configs at init time (fail-fast)."""

@@ -29,9 +29,9 @@ class DeequEngine(DQEngine):
     (one ``Check`` per constraint).
     """
 
-    def __init__(self, config: ConfigTree, dqts: Optional[int] = None):
+    def __init__(self, config: ConfigTree):
         self._sparkSession = None
-        super().__init__(config, dqts)
+        super().__init__(config)
 
     def _validate_config(self) -> None:
         """Validate Deequ configuration at init time."""
