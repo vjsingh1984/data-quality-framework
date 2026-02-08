@@ -147,7 +147,14 @@ class DQFramework:
                     metric["jobid"] = application_id
                     if constants.DQ_METRICS_RESULT_SUCCESS_KEY in metric:
                         if not metric[constants.DQ_METRICS_RESULT_SUCCESS_KEY]:
-                            logger.warning("Check failed: %s", json.dumps(metric))
+                            try:
+                                logger.warning("Check failed: %s", json.dumps(metric))
+                            except (TypeError, ValueError):
+                                # Metric contains non-JSON-serializable objects
+                                logger.warning(
+                                    "Check failed: %s",
+                                    str(metric.get("check", "unknown")),
+                                )
                     cumulative_metrics.append(metric)
 
         return cumulative_metrics
