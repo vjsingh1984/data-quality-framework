@@ -529,81 +529,56 @@ class DeequSchemaAdapter:
 **ID**: D5
 **Priority**: Medium
 **Category**: Design
-**Status**: **OPEN**
+**Status**: ✅ **COMPLETED** (2026-02-07)
 
 #### Description
 Convention-based engine discovery (`dq.engine.{name}.{name}_engine`) can fail silently or with unclear errors. No validation that the discovered class actually implements `DQEngine`.
 
-#### Current State
+#### Issues Fixed
+1. ✅ Class name capitalization now handles underscores properly
+   - `"schema_validation"` → `"SchemaValidationEngine"` (was `"SchemavalidationEngine"`)
+   - `"my_engine"` → `"MyengineEngine"` (was `"My_engineEngine"`)
+2. ✅ Added validation that discovered class is actually a `DQEngine` subclass
+3. ✅ Added validation for required `apply` method
+4. ✅ Enhanced error messages for debugging
+5. ✅ Added validation to entry point discovery as well
+
+#### Implementation Details
+
+**Fixed Class Name Logic:**
 ```python
-# In engine_registry.py
-def _try_convention_import(cls, name: str):
-    module_path = f"dq.engine.{name}.{name}_engine"
-    class_name = f"{name.capitalize()}Engine"
-    try:
-        module = importlib.import_module(module_path)
-        engine_class = getattr(module, class_name)
-        logger.debug("Loaded engine '%s' from %s", class_name, module_path)
-        return engine_class
-    except (ModuleNotFoundError, AttributeError) as e:
-        logger.debug("Convention import failed for '%s': %s", name, e)
-        return None
+# Old (broken):
+class_name = f"{name.capitalize()}Engine"
+
+# New (correct):
+class_name = ''.join(word.capitalize() for word in name.split('_')) + "Engine"
 ```
 
-#### Issues
-1. No verification that `engine_class` is actually a `DQEngine` subclass
-2. Capitalization convention (`name.capitalize()`) is fragile (e.g., "schemavalidation" → "Schemavalidation" not "SchemaValidation")
-3. Silent fallback to entry points makes debugging difficult
-
-#### Recommended Solution
-
-1. **Add class validation**:
+**Validation Added:**
 ```python
-def _try_convention_import(cls, name: str):
-    module_path = f"dq.engine.{name}.{name}_engine"
-    # Proper class name: remove underscores, capitalize each word
-    class_name = ''.join(word.capitalize() for word in name.split('_')) + "Engine"
-    # e.g., "my_engine" -> "MyEngine", "schema_validation" -> "SchemaValidationEngine"
+# Validate it's actually a class
+if not isinstance(engine_class, type):
+    raise ImportError(f"Engine '{name}' found '{class_name}' but it is not a class")
 
-    try:
-        module = importlib.import_module(module_path)
-        engine_class = getattr(module, class_name)
+# Validate it inherits from DQEngine
+from dq.engine.dq_engine import DQEngine
+if not issubclass(engine_class, DQEngine):
+    raise ImportError(f"Engine '{name}' found '{class_name}' but it does not inherit from DQEngine")
 
-        # Validate it's actually a DQEngine subclass
-        if not isinstance(engine_class, type):
-            raise ImportError(f"{class_name} is not a class")
-        if not issubclass(engine_class, DQEngine):
-            raise ImportError(f"{class_name} does not inherit from DQEngine")
-        if not getattr(engine_class, 'apply', None):
-            raise ImportError(f"{class_name} missing required 'apply' method")
-
-        logger.debug("Loaded engine '%s' from %s", class_name, module_path)
-        return engine_class
-    except (ModuleNotFoundError, AttributeError, ImportError) as e:
-        logger.warning("Convention import failed for '%s': %s", name, e)
-        return None
+# Validate it has the required 'apply' method
+if not hasattr(engine_class, 'apply'):
+    raise ImportError(f"Engine '{name}' found '{class_name}' but it is missing the required 'apply' method")
 ```
 
-2. **Add engine manifest system** (optional, for better extensibility):
-```python
-# In each engine's __init__.py
-ENGINE_METADATA = {
-    "name": "deequ",
-    "version": "1.0.0",
-    "class": "DeequEngine",
-    "dependencies": ["pydeequ"],
-    "spark_version": "3.5+"
-}
-```
+#### Files Modified
+- `dq/engine/engine_registry.py` - Fixed class name construction and added validation
+- `dq/tests/unit/test_engine_loader_unit.py` - Added 11 new tests
 
-#### Files to Modify
-- `dq/engine/engine_registry.py`
+#### Test Results
+All 146 unit tests pass (135 original + 11 new)
 
-#### Estimated Effort
-1 day
-
-#### Dependencies
-- None
+#### Commit
+`2f67517` - Implement D5: Engine Discovery Fragility fixes
 
 ---
 
@@ -1163,5 +1138,6 @@ No native profiling capabilities. Users must manually:
 
 | Date | Change | Author |
 |------|--------|--------|
-| 2025-02-07 | Initial tracker creation, completed Phases A-D | Claude (Sonnet 4.5) |
+| 2026-02-07 | Completed D5: Engine Discovery Fragility | Claude (Sonnet 4.5) |
+| 2026-02-07 | Initial tracker creation, completed Phases A-D | Claude (Sonnet 4.5) |
 | | | |
