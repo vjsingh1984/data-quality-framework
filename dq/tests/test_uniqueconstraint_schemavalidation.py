@@ -1,6 +1,8 @@
 # Copyright 2024 Data Quality Framework Contributors
 # SPDX-License-Identifier: Apache-2.0
 
+"""Tests for UNIQUE constraint validation in schema validation."""
+
 import json
 
 import pytest
@@ -12,47 +14,19 @@ from pyspark.sql.types import (
     StructType,
 )
 
-from dq.engine.schemavalidation.schemavalidation_engine import SchemavalidationEngine
-
-
-def process_schemavalidation_success(spark, df, config):
-    # Initialize Schema Validation Engine with single_check_mode = False for granular reporting
-    schema_validation_engine = SchemavalidationEngine(config)
-    df.createOrReplaceTempView("temp_data_table")
-
-    # Apply Schema Validation including multi-column unique and foreign key constraints
-    summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
-    for metric in summary_metrics:
-        print(json.dumps(metric, indent=2))
-        assert metric["success"] == True, f"{metric} failed."
-        if not (metric["success"]):
-            print("Error in : " + json.dumps(metric))
-            overallsuccess = False
-    return overallsuccess
-
-
-def process_schemavalidation_failure(spark, df, config):
-    # Initialize Schema Validation Engine with single_check_mode = False for granular reporting
-    schema_validation_engine = SchemavalidationEngine(config)
-    df.createOrReplaceTempView("temp_data_table")
-
-    # Apply Schema Validation including multi-column unique and foreign key constraints
-    summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
-    for metric in summary_metrics:
-        if not (metric["success"]):
-            print("Error in : " + json.dumps(metric))
-            overallsuccess = False
-
-    return overallsuccess
+from dq.tests.test_helpers import (
+    apply_schema_validation,
+    assert_all_metrics_success,
+    assert_any_metric_failure,
+)
 
 
 @pytest.mark.spark
 def test_unique_constraint_single_key_single_check_mode_success(spark):
+    """Test unique constraint on single column succeeds with unique values."""
     schema_config = ConfigFactory.parse_string(
         """{
-        name = "schemavalidation for varchartype10_failure"
+        name = "unique constraint single key success"
         engine = schemavalidation
         single_check_mode = True
         schema = {
@@ -75,9 +49,8 @@ def test_unique_constraint_single_key_single_check_mode_success(spark):
         ]
     )
     df = spark.createDataFrame(data=data, schema=data_schema)
-    assert True == process_schemavalidation_success(
-        spark, df, schema_config
-    ), "Atleast one metric failed."
+    metrics = apply_schema_validation(spark, df, schema_config)
+    assert_all_metrics_success(metrics)
 
 
 @pytest.mark.spark

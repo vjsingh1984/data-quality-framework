@@ -127,7 +127,7 @@ class SchemavalidationEngine(DQEngine):
         from dq.engine.dq_engine import DQMetric
         from dq.validation.schema_validator import NativeSchemaValidator
 
-        schema_config = self._config.get(constants.SCHEMA_VALIDATION_SCHEMA, {})
+        schema_config = self._config.get(constants.SCHEMA, {})
         validator = NativeSchemaValidator(schema_config, self._sparkSession)
 
         summary = validator.validate(df)
@@ -155,7 +155,7 @@ class SchemavalidationEngine(DQEngine):
 
         single_check_mode = self._config.get(constants.DQ_SINGLE_CHECK_MODE, True)
         schema_validation_check = SchemavalidationCheck(
-            schema_config=self._config.get(constants.SCHEMA_VALIDATION_SCHEMA, {}),
+            schema_config=self._config.get(constants.SCHEMA, {}),
             single_check_mode=single_check_mode,
         )
 
