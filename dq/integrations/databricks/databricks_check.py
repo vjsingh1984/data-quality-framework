@@ -60,13 +60,13 @@ class DatabricksCheck:
                         domain_job_name,
                         domain_job_def.settings.schedule.quartz_cron_expression,
                     )
-                    cron_obj = QuartzCron(
+                    quartz_cron = QuartzCron(
                         schedule_string=domain_job_def.settings.schedule.quartz_cron_expression,
                         start_date=dt_object,
                         end_date=end_date,
                     )
-                    iter = cron_obj.next_triggers(100, isoformat=True)
-                    expected_runs = len(list(iter))
+                    trigger_iterator = quartz_cron.next_triggers(100, isoformat=True)
+                    expected_runs = len(list(trigger_iterator))
 
                     run_list = w.jobs.list_runs(
                         job_id=job_id,
@@ -119,18 +119,18 @@ class DatabricksCheck:
             )
             current_time_in_millis = time() * 1000
             partition_year = F.year(F.from_unixtime(F.lit(time())))
-            nextdf = (
+            metrics_dataframe = (
                 df_metrics_results.withColumn("dqts", F.lit(current_time_in_millis))
                 .withColumn("dataset", F.lit(domain))
                 .withColumn("year", F.lit(partition_year))
             )
-            doesTableExist = spark.catalog.tableExists(dq_metrics_table)
+            table_exists = spark.catalog.tableExists(dq_metrics_table)
 
-            if doesTableExist:
-                nextdf.coalesce(1).write.mode("append").format("delta").option(
-                    "mergeSchema", "true"
-                ).insertInto(dq_metrics_table)
+            if table_exists:
+                metrics_dataframe.coalesce(1).write.mode("append").format(
+                    "delta"
+                ).option("mergeSchema", "true").insertInto(dq_metrics_table)
             else:
-                nextdf.coalesce(1).write.mode("overwrite").format("delta").saveAsTable(
-                    dq_metrics_table
-                )
+                metrics_dataframe.coalesce(1).write.mode("overwrite").format(
+                    "delta"
+                ).saveAsTable(dq_metrics_table)
