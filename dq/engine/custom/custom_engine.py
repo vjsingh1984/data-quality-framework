@@ -161,18 +161,18 @@ class CustomEngine(DQEngine):
             if repository:
                 from pydeequ.repository import ResultKey
 
-                current_milli_time = ResultKey.current_milli_time()
+                current_timestamp_ms = ResultKey.current_milli_time()
                 repository_utils.save_to_repository(
                     repository,
                     metrics_dataframe,
                     constants.DQ_REPOSITORY_METRICS,
-                    current_milli_time,
+                    current_timestamp_ms,
                 )
                 repository_utils.save_to_repository(
                     repository,
                     verifications_dataframe,
                     constants.DQ_REPOSITORY_VERIFICATIONS,
-                    current_milli_time,
+                    current_timestamp_ms,
                 )
 
             summary_metrics = []

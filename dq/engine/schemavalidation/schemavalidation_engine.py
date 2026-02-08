@@ -196,18 +196,18 @@ class SchemaValidationEngine(DQEngine):
         if repository:
             from pydeequ.repository import ResultKey
 
-            current_milli_time = ResultKey.current_milli_time()
+            current_timestamp_ms = ResultKey.current_milli_time()
             repository_utils.save_to_repository(
                 repository,
                 success_metrics,
                 constants.DQ_REPOSITORY_METRICS,
-                current_milli_time,
+                current_timestamp_ms,
             )
             repository_utils.save_to_repository(
                 repository,
                 check_verifications,
                 constants.DQ_REPOSITORY_VERIFICATIONS,
-                current_milli_time,
+                current_timestamp_ms,
             )
 
         summary_metrics = []

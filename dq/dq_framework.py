@@ -77,11 +77,11 @@ class DQFramework:
             Dict mapping logical names to DataFrames.
         """
         dataframes = {}
-        config_dataframes = self._config.get("dqframework.dataframes", {})
+        configured_dataframes = self._config.get("dqframework.dataframes", {})
 
-        for dataframe_name, table_ref in config_dataframes.items():
+        for dataframe_name, table_reference in configured_dataframes.items():
             try:
-                df = self._resolve_config_dataframe(dataframe_name, table_ref)
+                df = self._resolve_config_dataframe(dataframe_name, table_reference)
                 if df is not None:
                     dataframes[dataframe_name] = df
             except Exception as e:
@@ -94,19 +94,19 @@ class DQFramework:
 
         return dataframes
 
-    def _resolve_config_dataframe(self, dataframe_name, table_ref):
+    def _resolve_config_dataframe(self, dataframe_name, table_reference):
         """Resolve a DataFrame reference from configuration."""
-        if isinstance(table_ref, str):
-            return self._catalog_provider.get_dataframe(table_ref)
-        elif hasattr(table_ref, "get"):
-            table = table_ref.get("table", dataframe_name)
-            database = table_ref.get("database", None)
-            catalog = table_ref.get("catalog", None)
+        if isinstance(table_reference, str):
+            return self._catalog_provider.get_dataframe(table_reference)
+        elif hasattr(table_reference, "get"):
+            table = table_reference.get("table", dataframe_name)
+            database = table_reference.get("database", None)
+            catalog = table_reference.get("catalog", None)
             return self._catalog_provider.get_dataframe(
                 table, database=database, catalog=catalog
             )
         else:
-            return self._catalog_provider.get_dataframe(str(table_ref))
+            return self._catalog_provider.get_dataframe(str(table_reference))
 
     def run(self) -> List[Dict[str, Any]]:
         """Execute all configured data quality rules.
@@ -121,7 +121,7 @@ class DQFramework:
         """
         from pydeequ.repository import ResultKey
 
-        current_time_in_millis = ResultKey.current_milli_time()
+        current_timestamp_ms = ResultKey.current_milli_time()
         application_id = self._spark.sparkContext.applicationId
         cumulative_metrics = []
 
@@ -134,7 +134,7 @@ class DQFramework:
                 continue
 
             engine = self._engine_loader.load_engine(
-                engine_name, rule_config, current_time_in_millis
+                engine_name, rule_config, current_timestamp_ms
             )
 
             for dataframe_name in dataframe_names:
@@ -143,7 +143,7 @@ class DQFramework:
                     dataframe, repository=self._config.get("dqframework.repository", {})
                 )
                 for metric in summary_metrics:
-                    metric["ts"] = current_time_in_millis
+                    metric["ts"] = current_timestamp_ms
                     metric["jobid"] = application_id
                     if constants.DQ_METRICS_RESULT_SUCCESS_KEY in metric:
                         if not metric[constants.DQ_METRICS_RESULT_SUCCESS_KEY]:

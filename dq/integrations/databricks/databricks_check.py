@@ -117,10 +117,10 @@ class DatabricksCheck:
             metrics_dataframe = spark.createDataFrame(
                 timeline_metrics, ["entity", "instance", "name", "value"]
             )
-            current_time_in_millis = time() * 1000
+            current_timestamp_ms = time() * 1000
             partition_year = F.year(F.from_unixtime(F.lit(time())))
             metrics_dataframe = (
-                metrics_dataframe.withColumn("dqts", F.lit(current_time_in_millis))
+                metrics_dataframe.withColumn("dqts", F.lit(current_timestamp_ms))
                 .withColumn("dataset", F.lit(domain))
                 .withColumn("year", F.lit(partition_year))
             )
