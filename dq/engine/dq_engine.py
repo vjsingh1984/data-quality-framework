@@ -30,6 +30,7 @@ class DQEngine(ABC):
     ):
         self._config = config
         self._dqts = dqts
+        self._cache = {}  # Cache for engine-specific data (DFs, temp views, etc.)
         if repository_writer is not None:
             self._repository_writer = repository_writer
         else:
@@ -37,9 +38,40 @@ class DQEngine(ABC):
 
             self._repository_writer = NoOpRepositoryWriter()
 
+    def before_apply(self, dataframe: DataFrame) -> None:
+        """Hook called before apply() executes.
+
+        Subclasses can override this to perform setup logic such as:
+        - Caching reference DataFrames
+        - Creating temporary views
+        - Initializing resources
+
+        Args:
+            dataframe: The DataFrame that will be validated.
+        """
+        pass
+
+    def after_apply(self, dataframe: DataFrame, metrics: List[Dict[str, Any]]) -> None:
+        """Hook called after apply() completes (even if it fails).
+
+        Subclasses can override this to perform cleanup logic such as:
+        - Unpersisting cached DataFrames
+        - Dropping temporary views
+        - Releasing resources
+
+        Args:
+            dataframe: The DataFrame that was validated.
+            metrics: The metrics returned by apply() (may be empty if apply failed).
+        """
+        pass
+
     @abstractmethod
     def apply(self, dataframe: DataFrame, repository=None) -> List[Dict[str, Any]]:
         """Apply data quality checks to the given DataFrame.
+
+        Implementations are encouraged to call the lifecycle hooks:
+        - ``self.before_apply(dataframe)`` before processing
+        - ``self.after_apply(dataframe, metrics)`` after processing
 
         Args:
             dataframe: Spark DataFrame to validate.

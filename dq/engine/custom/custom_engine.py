@@ -36,7 +36,49 @@ class CustomEngine(DQEngine):
 
     def __init__(self, config, dqts: Optional[int] = None):
         self._config = config
+        self._spark_session = None  # Will be set in apply()
         super().__init__(config, dqts)
+
+    def before_apply(self, dataframe: DataFrame) -> None:
+        """Hook called before apply() - cache reference DataFrames if needed."""
+        super().before_apply(dataframe)
+
+        # Cache spark session for use in apply()
+        self._spark_session = dataframe.sparkSession
+
+        # Pre-load and cache reference DataFrames for LookupBasedOnColumnNameList constraints
+        self._cache_reference_dataframes(dataframe)
+
+    def after_apply(self, dataframe: DataFrame, metrics: List[Dict[str, Any]]) -> None:
+        """Hook called after apply() - cleanup cached DataFrames."""
+        super().after_apply(dataframe, metrics)
+
+        # Unpersist all cached DataFrames
+        for cache_key, cached_df in self._cache.items():
+            if hasattr(cached_df, "unpersist"):
+                cached_df.unpersist()
+        self._cache.clear()
+
+    def _cache_reference_dataframes(self, dataframe: DataFrame) -> None:
+        """Pre-load and cache reference DataFrames for LookupBasedOnColumnNameList constraints."""
+        checks = self._config.get("checks", [])
+
+        for check_config in checks:
+            constraint_name = check_config.get("constraint")
+            if constraint_name == "LookupBasedOnColumnNameList":
+                ref_table = check_config.get("ref_table")
+                if ref_table and ref_table not in self._cache:
+                    try:
+                        ref_df = self._spark_session.table(ref_table)
+                        self._cache[f"ref_{ref_table}"] = ref_df.cache()
+                        logger.debug(
+                            "Cached reference table '%s' for LookupBasedOnColumnNameList",
+                            ref_table,
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            "Failed to cache reference table '%s': %s", ref_table, e
+                        )
 
     def apply(self, dataframe: DataFrame, repository=None) -> List[Dict[str, Any]]:
         """Apply custom constraint checks to the DataFrame.
@@ -56,61 +98,69 @@ class CustomEngine(DQEngine):
                 DeprecationWarning,
                 stacklevel=2,
             )
-        custom_checks = self._config.get("checks", {})
-        spark_session = dataframe.sparkSession
-        _metrics_results = []
-        _verification_results = []
 
-        for check_config in custom_checks:
-            constraint_name = check_config.get("constraint", None)
-            constraint_class = ConstraintRegistry.get(constraint_name)
-            constraint_instance = constraint_class()
-            _results, _check_verification = constraint_instance.evaluate(
-                dataframe, check_config, spark_session
+        # Call lifecycle hooks
+        self.before_apply(dataframe)
+
+        try:
+            custom_checks = self._config.get("checks", {})
+            spark_session = dataframe.sparkSession
+            _metrics_results = []
+            _verification_results = []
+
+            for check_config in custom_checks:
+                constraint_name = check_config.get("constraint", None)
+                constraint_class = ConstraintRegistry.get(constraint_name)
+                constraint_instance = constraint_class()
+                _results, _check_verification = constraint_instance.evaluate(
+                    dataframe, check_config, spark_session
+                )
+                _metrics_results += _results
+                _verification_results += _check_verification
+
+            df_metrics_results = spark_session.createDataFrame(
+                _metrics_results, ["entity", "instance", "name", "value"]
             )
-            _metrics_results += _results
-            _verification_results += _check_verification
-
-        df_metrics_results = spark_session.createDataFrame(
-            _metrics_results, ["entity", "instance", "name", "value"]
-        )
-        df_check_verification_results = spark_session.createDataFrame(
-            _verification_results,
-            [
-                "check",
-                "check_level",
-                "check_status",
-                "constraint",
-                "constraint_status",
-                "constraint_message",
-            ],
-        )
-
-        if repository:
-            from pydeequ.repository import ResultKey
-
-            current_milli_time = ResultKey.current_milli_time()
-            repository_utils.save_to_repository(
-                repository,
-                df_metrics_results,
-                constants.DQ_REPOSITORY_METRICS,
-                current_milli_time,
-            )
-            repository_utils.save_to_repository(
-                repository,
-                df_check_verification_results,
-                constants.DQ_REPOSITORY_VERIFICATIONS,
-                current_milli_time,
+            df_check_verification_results = spark_session.createDataFrame(
+                _verification_results,
+                [
+                    "check",
+                    "check_level",
+                    "check_status",
+                    "constraint",
+                    "constraint_status",
+                    "constraint_message",
+                ],
             )
 
-        summary_metrics = []
-        for check in df_metrics_results.collect():
-            summary_metrics.append(
-                {
-                    "check": check["name"],
-                    "success": check["value"] == 1,
-                    "details": check,
-                }
-            )
+            if repository:
+                from pydeequ.repository import ResultKey
 
-        return summary_metrics
+                current_milli_time = ResultKey.current_milli_time()
+                repository_utils.save_to_repository(
+                    repository,
+                    df_metrics_results,
+                    constants.DQ_REPOSITORY_METRICS,
+                    current_milli_time,
+                )
+                repository_utils.save_to_repository(
+                    repository,
+                    df_check_verification_results,
+                    constants.DQ_REPOSITORY_VERIFICATIONS,
+                    current_milli_time,
+                )
+
+            summary_metrics = []
+            for check in df_metrics_results.collect():
+                summary_metrics.append(
+                    {
+                        "check": check["name"],
+                        "success": check["value"] == 1,
+                        "details": check,
+                    }
+                )
+
+            return summary_metrics
+        finally:
+            # Always call after_apply, even if an exception occurred
+            self.after_apply(dataframe, [])
