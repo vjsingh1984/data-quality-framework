@@ -119,14 +119,14 @@ def test_single_check_deequ_engine_success(
 ):
     engine = DeequEngine(deequ_single_check_config)
     summary_metrics = engine.apply(sample_success_dataframe, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         assert metric["success"] == True, f"{metric} failed."
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    assert True == overallsuccess, "At least one metric failed."
+    assert True == overall_success, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -135,14 +135,14 @@ def test_multi_check_deequ_engine_success(
 ):
     engine = DeequEngine(deequ_multi_check_config)
     summary_metrics = engine.apply(sample_success_dataframe, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         assert metric["success"] == True, f"{metric} failed."
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    assert True == overallsuccess, "At least one metric failed."
+    assert True == overall_success, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -151,12 +151,12 @@ def test_single_check_deequ_engine_failure(
 ):
     engine = DeequEngine(deequ_single_check_config)
     summary_metrics = engine.apply(sample_failure_dataframe, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
-            overallsuccess = False
+            overall_success = False
 
-    assert False == overallsuccess, "At least one metric should have failed."
+    assert False == overall_success, "At least one metric should have failed."
 
 
 @pytest.mark.spark
@@ -165,9 +165,9 @@ def test_multi_check_deequ_engine_failure(
 ):
     engine = DeequEngine(deequ_multi_check_config)
     summary_metrics = engine.apply(sample_failure_dataframe, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
-            overallsuccess = False
+            overall_success = False
 
-    assert False == overallsuccess, "At least one metric should have failed."
+    assert False == overall_success, "At least one metric should have failed."

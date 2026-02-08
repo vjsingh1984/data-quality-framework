@@ -45,14 +45,14 @@ def assert_all_metrics_success(metrics: List[Dict[str, Any]]) -> None:
     Raises:
         AssertionError: If any metric failed.
     """
-    overallsuccess = True
+    overall_success = True
     for metric in metrics:
         if not metric["success"]:
             print("Error in : " + json.dumps(metric, default=str))
-            overallsuccess = False
+            overall_success = False
 
     assert (
-        overallsuccess
+        overall_success
     ), f"Some metrics failed: {[m for m in metrics if not m['success']]}"
 
 

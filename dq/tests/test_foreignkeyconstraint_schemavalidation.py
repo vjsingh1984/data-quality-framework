@@ -134,14 +134,14 @@ def process_schemavalidation_success(spark, df, config):
 
     # Apply Schema Validation including multi-column unique and foreign key constraints
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         print(json.dumps(metric, indent=2))
         assert metric["success"] == True, f"{metric} failed."
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
-    return overallsuccess
+            overall_success = False
+    return overall_success
 
 
 def process_schemavalidation_failure(spark, df, config):
@@ -154,13 +154,13 @@ def process_schemavalidation_failure(spark, df, config):
     #
     # Apply Schema Validation including multi-column unique and foreign key constraints
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    return overallsuccess
+    return overall_success
 
 
 @pytest.mark.spark

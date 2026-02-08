@@ -40,22 +40,22 @@ def framework_config():
 @pytest.mark.spark
 def test_framework_success(spark, sample_dataframe_with_success, framework_config):
     dqf = DQFramework(spark, framework_config, sample_dataframe_with_success)
-    cum_metris = dqf.run()
-    overallsuccess = True
-    for metric in cum_metris:
+    cumulative_metrics = dqf.run()
+    overall_success = True
+    for metric in cumulative_metrics:
         assert "success" in metric, "Error: no success key in metric"
         if not (metric["success"]):
-            overallsuccess = False
-    assert overallsuccess == True, "Error: Some checks have failed"
+            overall_success = False
+    assert overall_success == True, "Error: Some checks have failed"
 
 
 @pytest.mark.spark
 def test_framework_failure(spark, sample_dataframe_with_failure, framework_config):
     dqf = DQFramework(spark, framework_config, sample_dataframe_with_failure)
-    cum_metris = dqf.run()
-    overallsuccess = True
-    for metric in cum_metris:
+    cumulative_metrics = dqf.run()
+    overall_success = True
+    for metric in cumulative_metrics:
         assert "success" in metric, "Error: no success key in metric"
         if not (metric["success"]):
-            overallsuccess = False
-    assert overallsuccess == False, "Error: All checks should not have passed"
+            overall_success = False
+    assert overall_success == False, "Error: All checks should not have passed"

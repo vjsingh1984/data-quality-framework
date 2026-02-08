@@ -282,14 +282,14 @@ def test_distinct_groupby_constraint(spark, custom_config, sample_dataframe_grou
     results = custom_engine.apply(sample_dataframe_group, None)
     # results.show()
     print(len(results))
-    overallsuccess = True
+    overall_success = True
     for metric in results:
         # print( json.dumps(metric))
         # assert metric['success'] == True, f"{metric} failed."
         if not (metric["success"]):
             # Use default=str to handle Spark Row objects
             print("Error in : " + json.dumps(metric, default=str))
-            overallsuccess = False
+            overall_success = False
 
     print(results)
     assert len(results) == 2
@@ -303,15 +303,15 @@ def test_rate_of_change(
     results = custom_engine.apply(multi_column_dataframe_rate_of_change, None)
     # results.show()
     print(results)
-    overallsuccess = True
+    overall_success = True
     for metric in results:
         # print( json.dumps(metric))
         # assert metric['success'] == True, f"{metric} failed."
         if not (metric["success"]):
             # Use default=str to handle Spark Row objects
             print("Error in : " + json.dumps(metric, default=str))
-            overallsuccess = False
-    assert overallsuccess == False
+            overall_success = False
+    assert overall_success == False
 
 
 @pytest.mark.spark
@@ -321,12 +321,12 @@ def test_wide_col_negative_values(
     custom_engine = CustomEngine(custom_config_wide_col_negative_values)
     results = custom_engine.apply(numeric_dataframe, None)
     print(results)
-    overallsuccess = True
+    overall_success = True
     for metric in results:
         # print( json.dumps(metric))
         # assert metric['success'] == True, f"{metric} failed."
         if not (metric["success"]):
             # Use default=str to handle Spark Row objects
             print("Error in : " + json.dumps(metric, default=str))
-            overallsuccess = False
-    assert overallsuccess == True
+            overall_success = False
+    assert overall_success == True

@@ -51,14 +51,14 @@ def test_schemavalidation_single_check_mode_true_stringtype_with_yyyymmdd_withou
     # Apply Schema Validation including multi-column unique and foreign key constraints
     schema_validation_engine = SchemaValidationEngine(schema_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
     assert (
-        False == overallsuccess
+        False == overall_success
     ), "Schemavalidation should fail as signupo_date will be interpreted as IntType and StringType check constraint will fail"
 
 
@@ -102,13 +102,13 @@ def test_schemavalidation_single_check_mode_true_stringtype_with_yyyymmdd_with_o
     # Apply Schema Validation including multi-column unique and foreign key constraints
     schema_validation_engine = SchemaValidationEngine(schema_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    assert True == overallsuccess, "Schemavalidation should have passed."
+    assert True == overall_success, "Schemavalidation should have passed."
 
 
 @pytest.mark.spark
@@ -151,13 +151,13 @@ def test_schemavalidation_single_check_mode_true_stringtype_with_yyyymmdd_with_o
     # Apply Schema Validation including multi-column unique and foreign key constraints
     schema_validation_engine = SchemaValidationEngine(schema_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    assert False == overallsuccess, "Schemavalidation should have failed."
+    assert False == overall_success, "Schemavalidation should have failed."
 
 
 @pytest.mark.spark
@@ -187,13 +187,13 @@ def test_schemavalidation_single_check_mode_true_varchartype10_success(spark):
     )
     schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    assert True == overallsuccess, "At least one metric failed."
+    assert True == overall_success, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -227,13 +227,13 @@ def test_schemavalidation_single_check_mode_true_shortType_success(spark):
     )
     schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    assert True == overallsuccess, "At least one metric failed."
+    assert True == overall_success, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -264,13 +264,13 @@ def test_schemavalidation_single_check_mode_true_chartype10_success(spark):
     )
     schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    assert True == overallsuccess, "At least one metric failed."
+    assert True == overall_success, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -305,13 +305,13 @@ def test_schemavalidation_single_check_mode_true_booleanType_success(spark):
     )
     schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    assert True == overallsuccess, "At least one metric failed."
+    assert True == overall_success, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -348,14 +348,14 @@ def test_schemavalidation_single_check_mode_false_stringtype_with_yyyymmdd_witho
     # Apply Schema Validation including multi-column unique and foreign key constraints
     schema_validation_engine = SchemaValidationEngine(schema_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
     assert (
-        False == overallsuccess
+        False == overall_success
     ), "Schemavalidation should fail as signupo_date will be interpreted as IntType and StringType check constraint will fail"
 
 
@@ -398,13 +398,13 @@ def test_schemavalidation_single_check_mode_false_stringtype_with_yyyymmdd_with_
     # Apply Schema Validation including multi-column unique and foreign key constraints
     schema_validation_engine = SchemaValidationEngine(schema_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    assert True == overallsuccess, "Schemavalidation should have passed."
+    assert True == overall_success, "Schemavalidation should have passed."
 
 
 @pytest.mark.spark
@@ -447,13 +447,13 @@ def test_schemavalidation_single_check_mode_false_stringtype_with_yyyymmdd_with_
     # Apply Schema Validation including multi-column unique and foreign key constraints
     schema_validation_engine = SchemaValidationEngine(schema_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    assert False == overallsuccess, "Schemavalidation should have failed."
+    assert False == overall_success, "Schemavalidation should have failed."
 
 
 @pytest.mark.spark
@@ -483,13 +483,13 @@ def test_schemavalidation_single_check_mode_false_varchartype10_success(spark):
     )
     schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    assert True == overallsuccess, "At least one metric failed."
+    assert True == overall_success, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -523,13 +523,13 @@ def test_schemavalidation_single_check_mode_false_shortType_success(spark):
     )
     schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    assert True == overallsuccess, "At least one metric failed."
+    assert True == overall_success, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -560,13 +560,13 @@ def test_schemavalidation_single_check_mode_false_chartype10_success(spark):
     )
     schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    assert True == overallsuccess, "At least one metric failed."
+    assert True == overall_success, "At least one metric failed."
 
 
 @pytest.mark.spark
@@ -601,10 +601,10 @@ def test_schemavalidation_single_check_mode_false_booleanType_success(spark):
     )
     schema_validation_engine = SchemaValidationEngine(scemavalidation_config)
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    assert True == overallsuccess, "At least one metric failed."
+    assert True == overall_success, "At least one metric failed."

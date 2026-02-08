@@ -17,13 +17,13 @@ def sample_domain_config():
 @pytest.mark.spark
 def test_deequ_engine_success(spark, multi_column_dataframe, sample_domain_config):
     dqf = DQFramework(spark, sample_domain_config, multi_column_dataframe)
-    cum_metris = dqf.run()
-    overallsuccess = True
-    for metric in cum_metris:
+    cumulative_metrics = dqf.run()
+    overall_success = True
+    for metric in cumulative_metrics:
         print(json.dumps(metric))
         # assert metric['success'] == True, f"{metric} failed."
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    assert False == overallsuccess, "At least one metric failed."
+    assert False == overall_success, "At least one metric failed."

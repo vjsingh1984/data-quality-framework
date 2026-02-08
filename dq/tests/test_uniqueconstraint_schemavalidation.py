@@ -286,21 +286,21 @@ def process_schemavalidation_success(spark, df, config):
     df.createOrReplaceTempView("temp_data_table")
     # Apply Schema Validation including multi-column unique constraints
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         print(json.dumps(metric, indent=2))
         # assert metric['success'] == True , f"{metric} failed."
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
-    if not overallsuccess:
+            overall_success = False
+    if not overall_success:
         print("dataframe\n")
         df.show()
         print("schema\n")
         df.printSchema()
         print("summarymetric\n")
         print(json.dumps(summary_metrics, indent=2))
-    return overallsuccess
+    return overall_success
 
 
 def process_schemavalidation_failure(spark, df, config):
@@ -309,10 +309,10 @@ def process_schemavalidation_failure(spark, df, config):
     df.createOrReplaceTempView("temp_data_table")
     # Apply Schema Validation including multi-column unique constraints
     summary_metrics = schema_validation_engine.apply(df, repository=None)
-    overallsuccess = True
+    overall_success = True
     for metric in summary_metrics:
         if not (metric["success"]):
             print("Error in : " + json.dumps(metric))
-            overallsuccess = False
+            overall_success = False
 
-    return overallsuccess
+    return overall_success
