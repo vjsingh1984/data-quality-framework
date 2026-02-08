@@ -1,7 +1,7 @@
 # Copyright 2024 Data Quality Framework Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-"""WideTablesNegativeValuesCheck constraint — finds negative values across wide tables."""
+"""NegativeValuesCheck constraint — finds negative values across all numeric columns."""
 from __future__ import annotations
 
 import logging
@@ -15,8 +15,8 @@ from dq.engine.custom.constraint_registry import CustomConstraint
 logger = logging.getLogger(__name__)
 
 
-class WideTablesNegativeValuesCheck(CustomConstraint):
-    """Check for negative values across all numeric columns in a wide table."""
+class NegativeValuesCheck(CustomConstraint):
+    """Check for negative values across all numeric columns in DataFrames."""
 
     def evaluate(
         self, dataframe: DataFrame, config: dict, spark_session
@@ -24,12 +24,12 @@ class WideTablesNegativeValuesCheck(CustomConstraint):
         from pyspark.sql import functions as F
 
         dq_dimension = config.get("dq_dimension", "Compliance")
-        constraint = config.get("constraint", "WideTablesNegativeValuesCheck")
+        constraint = config.get("constraint", "NegativeValuesCheck")
         level = config.get("level", "Warning")
         ignore_columns = config.get("ignore_columns", None)
         source = config.get("source", None)
 
-        logger.debug("Running WideTablesNegativeValuesCheck constraint")
+        logger.debug("Running NegativeValuesCheck constraint")
 
         if ignore_columns and len(ignore_columns) > 0:
             for col in ignore_columns:

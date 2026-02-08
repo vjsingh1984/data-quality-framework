@@ -82,7 +82,7 @@ def custom_config_lookup_based_column():
         checks = [
         {
             constraint_name = "ref_table_lookup"
-            constraint = "LookupBasedOnColumnNameList"
+            constraint = "LookupColumnList"
             ignore_columns = ["Date", "u", "source"]
             ref_table = "ref_db.lookup_table"
             ref_columns ="item_id"
@@ -103,7 +103,7 @@ def custom_config_wide_col_negative_values():
         checks = [
         {
             constraint_name = "Negative_values"
-            constraint = "WideTablesNegativeValuesCheck" 
+            constraint = "NegativeValuesCheck" 
             ignore_columns = ["Date", "u", "source"]
             level = "Warning"
         }

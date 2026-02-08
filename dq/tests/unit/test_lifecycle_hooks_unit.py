@@ -162,7 +162,7 @@ class TestCustomEngineLifecycle:
             {
                 checks = [
                     {
-                        constraint = "LookupBasedOnColumnNameList"
+                        constraint = "LookupColumnList"
                         ref_table = "test_ref_table"
                     }
                 ]

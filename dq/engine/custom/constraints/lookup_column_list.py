@@ -1,7 +1,7 @@
 # Copyright 2024 Data Quality Framework Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-"""LookupBasedOnColumnNameList constraint — checks column names against a reference table."""
+"""LookupColumnList constraint — checks column names against a reference table."""
 from __future__ import annotations
 
 import logging
@@ -19,21 +19,21 @@ logger = logging.getLogger(__name__)
 _SQL_IDENTIFIER = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_.]*$")
 
 
-class LookupBasedOnColumnNameList(CustomConstraint):
+class LookupColumnList(CustomConstraint):
     """Check if DataFrame column names are present as rows in a reference table."""
 
     def evaluate(
         self, dataframe: DataFrame, config: dict, spark_session
     ) -> Tuple[List[list], List[list]]:
         dq_dimension = config.get("dq_dimension", "Compliance")
-        constraint = config.get("constraint", "LookupBasedOnColumnNameList")
+        constraint = config.get("constraint", "LookupColumnList")
         ref_table = config.get("ref_table", None)
         ref_columns = config.get("ref_columns", None)
         level = config.get("level", "Warning")
         ignore_columns = config.get("ignore_columns", None)
         source = config.get("source", None)
 
-        logger.debug("Running LookupBasedOnColumnNameList constraint")
+        logger.debug("Running LookupColumnList constraint")
 
         if ignore_columns and len(ignore_columns) > 0:
             for col in ignore_columns:
