@@ -1,16 +1,111 @@
 # Data Quality Framework - Roadmap Tracker
 
-**Last Updated**: 2025-02-07
+**Last Updated**: 2026-02-07
 **Status**: Tracking remaining design/architecture improvements and vision items
 **Completed**: All critical, high, medium, and low-priority implementation shortcomings (Phases A-D)
 
 ---
 
-## Completed Work (2025-02-07)
+## High-Level Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DQ Framework Architecture                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            Configuration Layer                               │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                   │
+│  │  HOCON File  │───▶│ ConfigLoader │───▶│ ConfigTree   │                   │
+│  │  / S3 / ADLS │    │              │    │  (pyhocon)   │                   │
+│  └──────────────┘    └──────────────┘    └──────────────┘                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          DQFramework Orchestrator                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  _load_dataframes()                                                  │    │
+│  │    ├── CatalogFactory ──▶ CatalogProvider ──▶ DataFrame              │    │
+│  │    └── ChainedResolver (default → config → spark → catalog)          │    │
+│  │                                                                      │    │
+│  │  run()                                                               │    │
+│  │    └── For each rule:                                                │    │
+│  │        ├── EngineLoader.load_engine(name)                           │    │
+│  │        ├── engine.apply(dataframe) ──▶ List[Dict]                   │    │
+│  │        └── Accumulate metrics                                         │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                  ┌───────────────────┼───────────────────┐
+                  │                   │                   │
+                  ▼                   ▼                   ▼
+┌─────────────────────────────┐  ┌────────────────────────────────┐  ┌──────────────────┐
+│      Engine Registries       │  │      Catalog Providers         │  │  Resolvers       │
+│  ┌─────────────────────┐     │  │  ┌─────────────────────────┐  │  │  ┌────────────┐  │
+│  │   EngineRegistry    │     │  │  │  SparkCatalogProvider    │  │  │  │ DefaultDF   │  │
+│  │   ┌───────────────┐ │     │  │  │  UnityCatalogProvider    │  │  │  │ ConfigDF    │  │
+│  │   │deequ          │ │     │  │  │  GlueCatalogProvider     │  │  │  │ SparkCatalog│  │
+│  │   │custom         │ │     │  │  └─────────────────────────┘  │  │  │ Catalog     │  │
+│  │   │schemavalidation││     │  └────────────────────────────────┘  │  │  Provider    │  │
+│  │   │greatexpect.   │ │     │                                      │  │  └────────────┘  │
+│  │   │drules         │ │     │  ┌────────────────────────────────┐  │  │  (Chain)       │
+│  │   └───────────────┘ │     │  │      Constraint Registry        │  │  └──────────────────┘
+│  └─────────────────────┘     │  │  ┌─────────────────────────┐    │  │
+│                             │  │  │ RateOfChange            │    │  │
+│  ┌─────────────────────┐     │  │  │ DistinctnessByGroup     │    │  │
+│  │   RuleRegistry      │     │  │  │ LookupBasedOnColList    │    │  │
+│  │   ┌───────────────┐ │     │  │  │ NegativeValuesCheck     │    │  │
+│  │   │column_threshold│ │     │  │  └─────────────────────────┘    │  │
+│  │   │cross_column   │ │     │  └────────────────────────────────┘  │
+│  │   │custom_sql     │ │     │                                      │
+│  │   │null_check     │ │     │  ┌────────────────────────────────┐  │
+│  │   │regex          │ │     │  │      Rule Registry              │  │
+│  │   └───────────────┘ │     │  │  ┌─────────────────────────┐    │  │
+│  └─────────────────────┘     │  │  │ ColumnThresholdRule     │    │  │
+│                             │  │  │ CrossColumnRule         │    │  │
+│                             │  │  │ CustomSQLRule           │    │  │
+│                             │  │  │ NullCheckRule           │    │  │
+│                             │  │  │ RegexRule               │    │  │
+│                             │  │  └─────────────────────────┘    │  │
+│                             │  └────────────────────────────────┘  │
+│                             └─────────────────────────────────────┘
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           Output Metrics Layer                               │
+│  List[Dict {                                                              │
+│    "check": str,              # Constraint name                             │
+│    "success": bool,           # Pass/fail                                   │
+│    "details": Dict,           # Engine-specific details                      │
+│    "ts": int,                 # Timestamp (ms)                              │
+│    "jobid": str               # Spark application ID                        │
+│  }]                                                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                              ┌─────────────────────────┐
+                              │   Remaining Issues      │
+                              ├─────────────────────────┤
+                              │ D2: Return type variance│
+                              │ D3: Registry pattern    │
+                              │ D4: SchemaVal-Deequ     │
+                              │ D5: Engine discovery    │
+                              │ D6: Config validation   │
+                              │ D7: Lifecycle hooks     │
+                              │ D8: Catalog extensibility│
+                              │ V1-V6: Vision items     │
+                              └─────────────────────────┘
+```
+
+---
+
+## Completed Work (2026-02-07)
 
 ### Commits Pushed
 1. `2f10bc2` - Fix critical framework shortcomings and improve code quality
 2. `56382ae` - Add JSON serialization fallback for failed check logging
+3. `e3acb72` - Add roadmap tracker documentation
 
 ### Summary of Completed Items
 
@@ -64,6 +159,72 @@ Different engines return metrics with inconsistent structure. This makes it diff
     "success": True/False,
     "details": {"observed_value": 42, "element_count": 1000}
 }
+```
+
+#### Visual Representation of Problem
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     DQFramework.run()                          │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+            ┌─────────────────┼─────────────────┐
+            │                 │                 │
+    ┌───────▼──────┐  ┌───────▼──────┐  ┌──────▼─────┐
+    │  DeequEngine │  │  DrulesEngine│  │    GE...   │
+    └───────┬──────┘  └───────┬──────┘  └──────┬─────┘
+            │                 │                 │
+            │ INCONSISTENT    │ INCONSISTENT    │ INCONSISTENT
+            ▼                 ▼                 ▼
+    {check,             {constraint_name,  {expectation_type,
+     success,            success,           success,
+     details:{...}}     details:{...}}    details:{...}}
+            │                 │                 │
+            └─────────────────┴─────────────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │  Consumer Code    │
+                    │  ❌ Can't handle  │
+                    │  multiple formats│
+                    └───────────────────┘
+```
+
+#### Target State with Normalized Schema
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     DQFramework.run()                          │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+            ┌─────────────────┼─────────────────┐
+            │                 │                 │
+    ┌───────▼──────┐  ┌───────▼──────┐  ┌──────▼─────┐
+    │  DeequEngine │  │  DrulesEngine│  │    GE...   │
+    │  +normalize()│  │  +normalize()│  │+normalize()│
+    └───────┬──────┘  └───────┬──────┘  └──────┬─────┘
+            │                 │                 │
+            │ all return      │ all return      │ all return
+            ▼                 ▼                 ▼
+    ┌─────────────────────────────────────────────────┐
+    │              DQMetric (dataclass)               │
+    │  • check: str                                   │
+    │  • constraint: str                              │
+    │  • success: bool                                │
+    │  • engine: str                                  │
+    │  • timestamp_ms: int                            │
+    │  • dataset: str                                 │
+    │  • details: Dict[str, Any]                      │
+    │  • execution_time_ms: Optional[int]             │
+    │  • assertion: Optional[str]                     │
+    └─────────────────────────────────────────────────┘
+            │                 │                 │
+            └─────────────────┴─────────────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │  Consumer Code    │
+                    │  ✓ Single format  │
+                    │  ✓ Predictable    │
+                    └───────────────────┘
 ```
 
 #### Impact
@@ -158,6 +319,60 @@ constraint_class = ConstraintRegistry.get(name)  # Returns class
 # RuleRegistry
 cls._rules[name] = rule_class
 rule_class = RuleRegistry.get(name)  # Returns class
+```
+
+#### Visual Representation of Current Inconsistency
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    Current State (INCONSISTENT)               │
+├──────────────────────────────────────────────────────────────┤
+│                                                               │
+│  EngineRegistry                          ConstraintRegistry    │
+│  ┌─────────────────┐                   ┌─────────────────┐  │
+│  │ _explicit dict  │                   │ _constraints    │  │
+│  │ _lock           │                   │ _lock           │  │
+│  │ register()      │                   │ register()      │  │
+│  │ get_engine_cls()│  ─── DIFF ────►   │ get()           │  │
+│  │ unregister()    │                   │ NO unregister   │  │
+│  └─────────────────┘                   └─────────────────┘  │
+│         ▼                                         ▲          │
+│         │                                         │          │
+│         └───────────┬─────────────────────────────┘          │
+│                     │                                        │
+│  RuleRegistry                                          │
+│  ┌─────────────────┐                   ┌─────────────────┐  │
+│  │ _rules dict     │                   │  ???            │  │
+│  │ _lock           │    ─── DIFF ────►  Confusing API   │  │
+│  │ register()      │                   │ surface         │  │
+│  │ get()           │                                   │  │
+│  │ unregister()    │                                   │  │
+│  └─────────────────┘                                   │  │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│                   Target State (CONSISTENT)                  │
+├──────────────────────────────────────────────────────────────┤
+│                                                               │
+│                    GenericRegistry[T]                         │
+│                    ┌─────────────────┐                       │
+│                    │ _registry dict  │                       │
+│                    │ _lock           │                       │
+│                    │ register()      │◄────── All inherit    │
+│                    │ get()           │        from this       │
+│                    │ unregister()    │                       │
+│                    │ list_items()    │                       │
+│                    └─────────────────┘                       │
+│                           │                                  │
+│         ┌─────────────────┼─────────────────┐                │
+│         │                 │                 │                │
+│  ┌──────▼──────┐  ┌──────▼──────┐  ┌──────▼─────┐          │
+│  │EngineReg    │  │ConstraintReg│  │  RuleReg   │          │
+│  │[DQEngine]   │  │[CustomConst.│  │  [DRule]   │          │
+│  │+get_eng_cls │  │             │  │            │          │
+│  │(alias)      │  │             │  │            │          │
+│  └─────────────┘  └─────────────┘  └────────────┘          │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 #### Impact
@@ -497,6 +712,95 @@ def apply(self, dataframe, repository=None):
     # Can't create temp views with guaranteed cleanup
     # No before/after hooks
     return metrics
+```
+
+#### Visual Representation
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Current State (NO HOOKS)                      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  DQFramework.apply(dataframe)                                    │
+│       │                                                          │
+│       ▼                                                          │
+│  engine.apply(dataframe)                                         │
+│       │                                                          │
+│       ├── [DO CHECKS] ────> metrics                              │
+│       │      ❌ Can't cache reference DataFrames                │
+│       │      ❌ Can't create temp views                         │
+│       │      ❌ Can't cleanup resources                         │
+│       │                                                          │
+│       └── return metrics                                         │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                   Target State (WITH HOOKS)                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  DQFramework.apply(dataframe)                                    │
+│       │                                                          │
+│       ▼                                                          │
+│  engine.apply(dataframe)                                         │
+│       │                                                          │
+│       ├── before_apply(dataframe)  ◄──────┐                     │
+│       │      ✓ Cache reference DataFrames  │                    │
+│       │      ✓ Create temp views           │ Setup              │
+│       │      ✓ Initialize resources        │                    │
+│       │                                   │                     │
+│       ├── [DO CHECKS] ────> metrics       │                     │
+│       │                                   │                     │
+│       ├── after_apply(dataframe, metrics) │                     │
+│       │      ✓ Unpersist cached DataFrames │                    │
+│       │      ✓ Drop temp views             │ Cleanup            │
+│       │      ✓ Release resources          │                     │
+│       │                                   │                     │
+│       └── return metrics                  │                     │
+│                                          │                     │
+│  ┌────────────────────────────────────────┴─────────────┐      │
+│  │         Resource Lifecycle (Example)                  │      │
+│  │                                                     │      │
+│  │  before_apply():                                   │      │
+│  │    ┌─────────┐                                    │      │
+│  │    │ Cache   │ ────> ref_df.cache()               │      │
+│  │    └─────────┘                                    │      │
+│  │                                                    │      │
+│  │  apply_checks():                                  │      │
+│  │    ✓ Use cached DataFrames                       │      │
+│  │    ✓ Create temp views                           │      │
+│  │                                                    │      │
+│  │  after_apply():                                   │      │
+│  │    ┌─────────┐                                    │      │
+│  │    │ Cleanup │ ────> ref_df.unpersist()            │      │
+│  │    └─────────┘                                    │      │
+│  └────────────────────────────────────────────────────┘      │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Example Use Case: Cached Reference Data
+
+```
+Without Hooks (Current):
+┌─────────────────────────────────────────────┐
+│ Multiple apply() calls on same engine       │
+├─────────────────────────────────────────────┤
+│ apply() #1: Load ref DF from DB (slow)      │
+│ apply() #2: Load ref DF from DB (slow) ❌    │
+│ apply() #3: Load ref DF from DB (slow) ❌    │
+└─────────────────────────────────────────────┘
+
+With Hooks (Target):
+┌─────────────────────────────────────────────┐
+│ Multiple apply() calls with caching         │
+├─────────────────────────────────────────────┤
+│ before_apply(): Load & cache ref DF         │
+│ apply() #1: Use cached DF (fast) ✓          │
+│ apply() #2: Use cached DF (fast) ✓          │
+│ apply() #3: Use cached DF (fast) ✓          │
+│ after_apply(): Unpersist cached DF          │
+└─────────────────────────────────────────────┘
 ```
 
 #### Recommended Solution
