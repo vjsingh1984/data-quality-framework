@@ -235,16 +235,16 @@ class SchemaValidationCheck:
             Updated checks.
         """
         if override and constants.OVERRIDE_CONFIG_PATTERN_KEY in override:
-            pattern_regex = override.get(constants.OVERRIDE_CONFIG_PATTERN_KEY)
+            override_pattern = override.get(constants.OVERRIDE_CONFIG_PATTERN_KEY)
             checks = self._add_constraint(
                 checks,
                 "hasPattern",
                 description="Schema Validation Override Check",
                 column=column_name,
-                pattern=pattern_regex,
+                pattern=override_pattern,
                 assertion=assertion,
                 name=f"override check for column {column_name}",
-                hint=f"{hint_message}. Pattern={pattern_regex}",
+                hint=f"{hint_message}. Pattern={override_pattern}",
             )
             if override.get(constants.OVERRIDE_CONFIG_REPLACE_KEY, True):
                 # Pattern replaces the datatype check entirely

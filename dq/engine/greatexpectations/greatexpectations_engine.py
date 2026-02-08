@@ -123,11 +123,11 @@ class GreatExpectationsEngine(DQEngine):
     ) -> List[Dict[str, Any]]:
         """Extract metric dictionaries from GE validation output."""
         summary_metrics = []
-        for exp_result in validation_output.results:
-            check_type = exp_result.expectation_config.expectation_type
+        for expectation_result in validation_output.results:
+            check_type = expectation_result.expectation_config.expectation_type
 
             # Convert GE result to dict if it isn't already
-            details = exp_result.result
+            details = expectation_result.result
             if hasattr(details, "to_dict"):
                 details = details.to_dict()
             elif not isinstance(details, dict):
@@ -135,7 +135,7 @@ class GreatExpectationsEngine(DQEngine):
 
             metric = self._create_metric(
                 check=check_type,
-                success=exp_result.success,
+                success=expectation_result.success,
                 details=details,
                 constraint=check_type,
             )
