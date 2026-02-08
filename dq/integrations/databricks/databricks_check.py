@@ -40,7 +40,7 @@ class DatabricksCheck:
             None. Results are written to a Delta table.
         """
         last_run_epoch = last_run / 1000
-        dt_object = datetime.fromtimestamp(last_run_epoch)
+        start_datetime = datetime.fromtimestamp(last_run_epoch)
 
         w = WorkspaceClient(host=self._databricks_url, token=self._databricks_token)
 
@@ -62,7 +62,7 @@ class DatabricksCheck:
                     )
                     quartz_cron = QuartzCron(
                         schedule_string=domain_job_def.settings.schedule.quartz_cron_expression,
-                        start_date=dt_object,
+                        start_date=start_datetime,
                         end_date=end_date,
                     )
                     trigger_iterator = quartz_cron.next_triggers(100, isoformat=True)
