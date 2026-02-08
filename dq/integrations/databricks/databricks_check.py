@@ -51,8 +51,8 @@ class DatabricksCheck:
         logger.info("Monitoring jobs: %s", jobs_to_monitor)
         for domain_job_name in jobs_to_monitor:
             logger.debug("Checking job: %s", domain_job_name)
-            jobs_itertor = w.jobs.list(name=domain_job_name)
-            for domain_job_def in jobs_itertor:
+            jobs_iterator = w.jobs.list(name=domain_job_name)
+            for domain_job_def in jobs_iterator:
                 if domain_job_def.creator_user_name == job_created_by:
                     job_id = domain_job_def.job_id
                     logger.info(
