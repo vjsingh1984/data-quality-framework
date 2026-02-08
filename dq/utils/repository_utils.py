@@ -5,16 +5,16 @@ import os
 
 
 def save_to_repository(
-    repoconfig, df, metric_type_suffix, resultkey_current_time_to_millis
+    repoconfig, df, metric_type_suffix, result_timestamp_ms
 ):
     """
-    Saves the repository configuration to a file.
+    Saves DataFrame to configured repository (file system or catalog).
 
     Args:
-        repoconfig (ConfigTree): The configuration object containing the repository settings.
+        repoconfig (ConfigTree): The configuration object containing repository settings.
         df (pyspark.DataFrame): The DataFrame to be saved.
-        metric_type_suffix (str) : The metric type suffix to be added to the file name.
-        resultkey_current_time_to_millis (long): result key to tie verifications and metrics executed together
+        metric_type_suffix (str): The metric type suffix to be added to the file/table name.
+        result_timestamp_ms (int): Result timestamp to tie verifications and metrics together.
 
     Returns:
         None
@@ -32,10 +32,10 @@ def save_to_repository(
         raise ValueError("Invalid format specified in the configuration.")
 
     partition_year = F.year(
-        F.from_unixtime(F.lit(resultkey_current_time_to_millis / 1000))
+        F.from_unixtime(F.lit(result_timestamp_ms / 1000))
     )
-    nextdf = (
-        df.withColumn("dqts", F.lit(resultkey_current_time_to_millis))
+    enriched_df = (
+        df.withColumn("dqts", F.lit(result_timestamp_ms))
         .withColumn("dataset", F.lit(partition_dataset))
         .withColumn("year", F.lit(partition_year))
     )
@@ -45,7 +45,7 @@ def save_to_repository(
         if paths:
             for path in paths:
                 # Save to file
-                nextdf.coalesce(1).write.mode("append").format(format).partitionBy(
+                enriched_df.coalesce(1).write.mode("append").format(format).partitionBy(
                     "dataset", "year"
                 ).save(os.path.join(path, metric_type_suffix))
 
@@ -59,24 +59,24 @@ def save_to_repository(
                 if table is None:
                     raise ValueError("Table name is not provided in the configuration.")
                 else:
-                    tablewithsuffix = table + "_" + metric_type_suffix
-                    parts = tablewithsuffix.split(".")
+                    table_with_suffix = table + "_" + metric_type_suffix
+                    parts = table_with_suffix.split(".")
                     if len(parts) != 2:
                         raise ValueError(
-                            f"Table reference '{tablewithsuffix}' must be in "
+                            f"Table reference '{table_with_suffix}' must be in "
                             f"'database.table' format, got {len(parts)} part(s)."
                         )
                     dbname, tabname = parts
-                    table_exists_already = (
+                    table_exists = (
                         df.sparkSession._jsparkSession.catalog().tableExists(
                             dbname, tabname
                         )
                     )
-                    if table_exists_already:
-                        nextdf.coalesce(1).write.mode("append").format(format).option(
+                    if table_exists:
+                        enriched_df.coalesce(1).write.mode("append").format(format).option(
                             "mergeSchema", "true"
-                        ).insertInto(tablewithsuffix)
+                        ).insertInto(table_with_suffix)
                     else:
-                        nextdf.coalesce(1).write.mode("overwrite").format(
+                        enriched_df.coalesce(1).write.mode("overwrite").format(
                             format
-                        ).saveAsTable(tablewithsuffix)
+                        ).saveAsTable(table_with_suffix)
