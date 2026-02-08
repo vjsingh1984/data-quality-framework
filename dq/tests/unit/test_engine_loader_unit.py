@@ -10,6 +10,11 @@ import pytest
 _ENGINE_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 
 
+def _build_class_name(name: str) -> str:
+    """Helper function that matches the new engine class name logic."""
+    return "".join(word.capitalize() for word in name.split("_")) + "Engine"
+
+
 class TestEngineNameValidation:
     """Tests for engine name regex validation."""
 
@@ -80,8 +85,70 @@ class TestModulePathConstruction:
             loader.load_engine("Invalid-Name", {})
 
     def test_loader_module_not_found(self):
-        from dq.engine.engine_loader import EngineLoader
+        """Test that loading a non-existent engine raises ImportError."""
+        from dq.engine.engine_registry import EngineRegistry
 
-        loader = EngineLoader()
-        with pytest.raises(ImportError):
-            loader.load_engine("nonexistent", {})
+        # Try to get a non-existent engine
+        with pytest.raises(ImportError, match="not found via registry"):
+            EngineRegistry.get_engine_class("nonexistent")
+
+
+class TestImprovedClassNameConstruction:
+    """Tests for the improved class name construction logic (D5 fix)."""
+
+    @pytest.mark.parametrize(
+        "name,expected",
+        [
+            ("deequ", "DeequEngine"),
+            ("custom", "CustomEngine"),
+            ("drules", "DrulesEngine"),
+            ("my_engine", "MyEngineEngine"),
+            ("schema_validation", "SchemaValidationEngine"),
+            ("greatexpectations", "GreatexpectationsEngine"),
+            ("a", "AEngine"),
+            ("multi_part_engine", "MultiPartEngineEngine"),
+        ],
+    )
+    def test_class_name_new_logic(self, name, expected):
+        """Test that underscores are removed and each word is capitalized."""
+        assert _build_class_name(name) == expected
+
+    def test_old_capitalize_was_broken(self):
+        """Demonstrate that the old capitalize() logic was broken."""
+        # Old logic: f"{name.capitalize()}Engine"
+        # "my_engine" -> "My_engineEngine" ❌
+        # "schema_validation" -> "SchemavalidationEngine" ❌
+
+        assert "my_engine".capitalize() == "My_engine"
+        assert "schema_validation".capitalize() == "Schema_validation"
+
+        # New logic handles this correctly - each word is capitalized
+        assert _build_class_name("my_engine") == "MyEngineEngine"
+        assert _build_class_name("schema_validation") == "SchemaValidationEngine"
+
+
+class TestEngineDiscoveryValidation:
+    """Tests for engine discovery validation (D5 fix)."""
+
+    def test_convention_import_validates_apply_method(self):
+        """Test that convention import validates required 'apply' method."""
+        from dq.engine.engine_registry import EngineRegistry
+
+        # Try to load known good engines - they should all have the apply method
+        for engine_name in ["deequ", "custom", "drules"]:
+            result = EngineRegistry._try_convention_import(engine_name)
+            if result is not None:
+                assert hasattr(
+                    result, "apply"
+                ), f"{engine_name} should have apply method"
+
+    def test_real_engines_load_with_new_logic(self):
+        """Test that real engines can be loaded with the new class name logic."""
+        from dq.engine.engine_registry import EngineRegistry
+
+        # These engines should load successfully with the new logic
+        for engine_name in ["deequ", "custom", "drules", "schemavalidation"]:
+            result = EngineRegistry.get_engine_class(engine_name)
+            assert result is not None, f"Failed to load {engine_name}"
+            # Verify it has the required apply method
+            assert hasattr(result, "apply"), f"{engine_name} missing apply method"

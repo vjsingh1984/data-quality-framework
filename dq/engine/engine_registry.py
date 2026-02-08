@@ -101,21 +101,64 @@ class EngineRegistry:
 
     @classmethod
     def _try_convention_import(cls, name: str) -> Optional[Type[DQEngine]]:
-        """Try to import engine via convention: dq.engine.{name}.{name}_engine."""
+        """Try to import engine via convention: dq.engine.{name}.{name}_engine.
+
+        The class name follows the convention: remove underscores, capitalize each word,
+        and append 'Engine'. For example:
+        - "my_engine" -> "MyEngine"
+        - "schema_validation" -> "SchemaValidationEngine"
+        - "greatexpectations" -> "GreatexpectationsEngine"
+
+        Validates that the discovered class is actually a DQEngine subclass
+        and has the required 'apply' method.
+        """
         module_path = f"dq.engine.{name}.{name}_engine"
-        class_name = f"{name.capitalize()}Engine"
+        # Proper class name: remove underscores, capitalize each word
+        class_name = "".join(word.capitalize() for word in name.split("_")) + "Engine"
+
         try:
             module = importlib.import_module(module_path)
             engine_class = getattr(module, class_name)
+
+            # Validate it's actually a class
+            if not isinstance(engine_class, type):
+                raise ImportError(
+                    f"Engine '{name}' found '{class_name}' but it is not a class "
+                    f"(type: {type(engine_class).__name__})"
+                )
+
+            # Validate it inherits from DQEngine (runtime import to avoid circular)
+            from dq.engine.dq_engine import DQEngine
+
+            if not issubclass(engine_class, DQEngine):
+                raise ImportError(
+                    f"Engine '{name}' found '{class_name}' but it does not inherit from DQEngine. "
+                    f"Found bases: {engine_class.__bases__}"
+                )
+
+            # Validate it has the required 'apply' method
+            if not hasattr(engine_class, "apply"):
+                raise ImportError(
+                    f"Engine '{name}' found '{class_name}' but it is missing the required 'apply' method"
+                )
+
             logger.debug("Loaded engine '%s' from %s", class_name, module_path)
             return engine_class
+        except ImportError as e:
+            # ImportErrors raised during validation - log as warning
+            logger.warning("Convention import failed for '%s': %s", name, e)
+            return None
         except (ModuleNotFoundError, AttributeError) as e:
+            # Module not found or attribute error - expected during discovery
             logger.debug("Convention import failed for '%s': %s", name, e)
             return None
 
     @classmethod
     def _try_entry_points(cls, name: str) -> Optional[Type[DQEngine]]:
-        """Try to find engine via importlib.metadata entry points."""
+        """Try to find engine via importlib.metadata entry points.
+
+        Validates that the discovered class is a valid DQEngine subclass.
+        """
         try:
             from importlib.metadata import entry_points
 
@@ -129,6 +172,36 @@ class EngineRegistry:
             for ep in dq_eps:
                 if ep.name == name:
                     engine_class = ep.load()
+
+                    # Validate it's actually a class
+                    if not isinstance(engine_class, type):
+                        logger.warning(
+                            "Entry point '%s' returned non-class type: %s",
+                            name,
+                            type(engine_class).__name__,
+                        )
+                        return None
+
+                    # Validate it inherits from DQEngine
+                    from dq.engine.dq_engine import DQEngine
+
+                    if not issubclass(engine_class, DQEngine):
+                        logger.warning(
+                            "Entry point '%s' has class that does not inherit from DQEngine: %s",
+                            name,
+                            engine_class.__name__,
+                        )
+                        return None
+
+                    # Validate it has the required 'apply' method
+                    if not hasattr(engine_class, "apply"):
+                        logger.warning(
+                            "Entry point '%s' has class missing required 'apply' method: %s",
+                            name,
+                            engine_class.__name__,
+                        )
+                        return None
+
                     logger.debug("Loaded engine '%s' from entry point", name)
                     return engine_class
         except Exception as e:
