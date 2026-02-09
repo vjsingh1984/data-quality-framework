@@ -70,7 +70,9 @@ class DQEngine(ABC):
         repository_writer: Optional[RepositoryWriter] = None,
     ):
         self._config = config
-        self._cache = {}  # Cache for engine-specific data (DFs, temp views, etc.)
+        self._cache: dict[
+            str, Any
+        ] = {}  # Cache for engine-specific data (DFs, temp views, etc.)
         if repository_writer is not None:
             self._repository_writer = repository_writer
         else:

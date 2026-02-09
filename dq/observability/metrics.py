@@ -253,7 +253,7 @@ class MetricsRegistry:
         pass_count = sum(1 for m in check_results if m.value > 0)
         fail_count = sum(1 for m in check_results if m.value == 0)
 
-        engine_counts = Counter()
+        engine_counts: Counter[str] = Counter()
         for metric in self._metrics:
             for label in metric.labels:
                 if label.key == "engine":

@@ -98,8 +98,8 @@ class DistinctnessByGroup(CustomConstraint):
         group_df = dataframe.groupBy(*group_by).agg(*exprs)
         data_collect = group_df.collect()
 
-        metric_results = []
-        check_verifications = []
+        metric_results: list[list] = []
+        check_verifications: list[list] = []
 
         for row in data_collect:
             for column in columns:

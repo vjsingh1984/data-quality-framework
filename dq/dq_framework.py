@@ -4,7 +4,7 @@
 """Main orchestrator for the Data Quality Framework."""
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 from dq.catalog.catalog_factory import CatalogFactory
 from dq.config.config_loader import AutoConfigLoader, ConfigLoader
@@ -86,11 +86,11 @@ class DQFramework:
             catalog_type=self._catalog_type,
         )
 
-    def _init_metrics_exporters(self) -> List[MetricsExporter]:
+    def _init_metrics_exporters(self) -> Sequence[MetricsExporter]:
         """Initialize metrics exporters from configuration.
 
         Returns:
-            List of configured metrics exporters.
+            Sequence of configured metrics exporters.
         """
         exporters = []
         observability_config = self._config.get("dqframework.observability", {})

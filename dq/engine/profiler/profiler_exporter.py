@@ -273,49 +273,51 @@ class ProfileExporter:
             )
 
             if col_profile.numeric_stats:
-                stats = col_profile.numeric_stats
+                numeric_stats = col_profile.numeric_stats
                 md.write("- **Statistics:**\n")
-                md.write(f"  - Min: {stats.min}\n")
-                md.write(f"  - Max: {stats.max}\n")
+                md.write(f"  - Min: {numeric_stats.min}\n")
+                md.write(f"  - Max: {numeric_stats.max}\n")
                 md.write(
-                    f"  - Mean: {stats.mean:.2f}\n" if stats.mean else "  - Mean: N/A\n"
+                    f"  - Mean: {numeric_stats.mean:.2f}\n"
+                    if numeric_stats.mean
+                    else "  - Mean: N/A\n"
                 )
                 md.write(
-                    f"  - StdDev: {stats.stddev:.2f}\n"
-                    if stats.stddev
+                    f"  - StdDev: {numeric_stats.stddev:.2f}\n"
+                    if numeric_stats.stddev
                     else "  - StdDev: N/A\n"
                 )
-                if stats.percentiles:
+                if numeric_stats.percentiles:
                     md.write("  - Percentiles:\n")
-                    for p_name, p_value in sorted(stats.percentiles.items()):
+                    for p_name, p_value in sorted(numeric_stats.percentiles.items()):
                         md.write(f"    - {p_name}: {p_value}\n")
 
             if col_profile.string_stats:
-                stats = col_profile.string_stats
+                string_stats = col_profile.string_stats
                 md.write("- **String Statistics:**\n")
-                md.write(f"  - Min Length: {stats.min_length}\n")
-                md.write(f"  - Max Length: {stats.max_length}\n")
+                md.write(f"  - Min Length: {string_stats.min_length}\n")
+                md.write(f"  - Max Length: {string_stats.max_length}\n")
                 md.write(
-                    f"  - Avg Length: {stats.avg_length:.1f}\n"
-                    if stats.avg_length
+                    f"  - Avg Length: {string_stats.avg_length:.1f}\n"
+                    if string_stats.avg_length
                     else "  - Avg Length: N/A\n"
                 )
-                if stats.patterns:
+                if string_stats.patterns:
                     md.write("  - Patterns:\n")
-                    for pattern, count in stats.patterns.items():
+                    for pattern, count in string_stats.patterns.items():
                         md.write(f"    - {pattern}: {count}\n")
 
             if col_profile.date_stats:
-                stats = col_profile.date_stats
+                date_stats = col_profile.date_stats
                 md.write("- **Date Range:**\n")
-                md.write(f"  - From: {stats.min_date}\n")
-                md.write(f"  - To: {stats.max_date}\n")
+                md.write(f"  - From: {date_stats.min_date}\n")
+                md.write(f"  - To: {date_stats.max_date}\n")
 
             if col_profile.unique_value_stats:
-                stats = col_profile.unique_value_stats
+                unique_stats = col_profile.unique_value_stats
                 md.write("- **Unique Values:**\n")
-                md.write(f"  - Distinct Count: {stats.distinct_count}\n")
-                md.write(f"  - Unique %: {stats.unique_percentage:.1f}%\n")
+                md.write(f"  - Distinct Count: {unique_stats.distinct_count}\n")
+                md.write(f"  - Unique %: {unique_stats.unique_percentage:.1f}%\n")
 
             md.write("\n")
 

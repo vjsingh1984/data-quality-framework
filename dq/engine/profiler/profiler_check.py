@@ -264,10 +264,16 @@ class ProfilerCheck:
             F.max(column_name).alias("max_date"),
         ).first()
 
-        return DateStatistics(
-            min_date=str(date_stats["min_date"]) if date_stats["min_date"] else None,
-            max_date=str(date_stats["max_date"]) if date_stats["max_date"] else None,
-        )
+        if date_stats:
+            return DateStatistics(
+                min_date=str(date_stats["min_date"])
+                if date_stats["min_date"]
+                else None,
+                max_date=str(date_stats["max_date"])
+                if date_stats["max_date"]
+                else None,
+            )
+        return DateStatistics(min_date=None, max_date=None)
 
     def _profile_unique_values(
         self, dataframe: DataFrame, column_name: str

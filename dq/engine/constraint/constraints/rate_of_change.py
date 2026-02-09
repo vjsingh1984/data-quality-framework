@@ -62,8 +62,8 @@ class RateOfChange(CustomConstraint):
         # Limit rows collected to avoid OOM
         df_final = dataframe.limit(max_rows).collect()
 
-        metric_results = []
-        check_verifications = []
+        metric_results: list[list] = []
+        check_verifications: list[list] = []
 
         for row in df_final:
             for column in columns:
