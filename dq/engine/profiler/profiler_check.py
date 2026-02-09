@@ -335,7 +335,7 @@ class ProfilerCheck:
         for i, col1 in enumerate(numeric_cols):
             for col2 in numeric_cols[i + 1 :]:
                 try:
-                    corr = Correlation.corr(dataframe, col1, col2)
+                    corr: float = Correlation.corr(dataframe, col1, col2)
                     if corr:
                         correlations[f"{col1}_{col2}"] = corr
                 except Exception as e:

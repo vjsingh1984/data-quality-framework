@@ -98,27 +98,28 @@ class DQFramework:
         # Check which exporters are enabled
         if observability_config.get("prometheus_enabled", False):
             prometheus_port = observability_config.get("prometheus_port", 9090)
-            exporter = PrometheusExporter(port=prometheus_port)
-            exporters.append(exporter)
+            prometheus_exporter = PrometheusExporter(port=prometheus_port)
+            exporters.append(prometheus_exporter)
             logger.info("Prometheus exporter enabled on port %d", prometheus_port)
 
         if observability_config.get("opentelemetry_enabled", False):
             otel_endpoint = observability_config.get(
                 "opentelemetry_endpoint", "http://localhost:4318"
             )
-            exporter = OpenTelemetryExporter(endpoint=otel_endpoint)
-            exporters.append(exporter)
+            otel_exporter = OpenTelemetryExporter(endpoint=otel_endpoint)
+            exporters.append(otel_exporter)
             logger.info("OpenTelemetry exporter enabled: %s", otel_endpoint)
 
         if observability_config.get("datadog_enabled", False):
             api_key = observability_config.get("datadog_api_key")
             app_key = observability_config.get("datadog_app_key")
-            exporter = DatadogExporter(api_key=api_key, app_key=app_key)
-            exporters.append(exporter)
+            datadog_exporter = DatadogExporter(api_key=api_key, app_key=app_key)
+            exporters.append(datadog_exporter)
             logger.info("Datadog exporter enabled")
 
         # Always add logging exporter as fallback
-        exporters.append(LoggingExporter())
+        logging_exporter = LoggingExporter()
+        exporters.append(logging_exporter)
         logger.info("Logging exporter enabled")
 
         return exporters
