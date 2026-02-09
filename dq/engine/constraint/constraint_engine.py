@@ -181,10 +181,13 @@ class ConstraintEngine(DQEngine):
                 # Extract constraint from check name if possible
                 constraint = check_name
 
+                # Convert Row to dict for details
+                check_dict = check.asDict()
+
                 metric = self._create_metric(
                     check=check_name,
                     success=check["value"] == 1,
-                    details=check,
+                    details=check_dict,
                     constraint=constraint,
                 )
                 summary_metrics.append(metric.to_dict())

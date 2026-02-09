@@ -59,7 +59,7 @@ class SchemaValidationEngine(DQEngine):
 
     def __init__(self, config: ConfigTree):
         super().__init__(config)
-        self._spark_session = None
+        self._spark_session: Any = None  # Will be set to SparkSession in apply()
 
     def _validate_config(self) -> None:
         """Validate SchemaValidationEngine configuration at init time."""

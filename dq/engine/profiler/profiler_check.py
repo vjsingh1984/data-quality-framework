@@ -335,9 +335,14 @@ class ProfilerCheck:
         for i, col1 in enumerate(numeric_cols):
             for col2 in numeric_cols[i + 1 :]:
                 try:
-                    corr: float = Correlation.corr(dataframe, col1, col2)
-                    if corr:
-                        correlations[f"{col1}_{col2}"] = corr
+                    corr_df = Correlation.corr(dataframe, col1, col2)
+                    # Correlation.corr returns a DataFrame with a single cell containing the correlation
+                    first_row = corr_df.first()
+                    if first_row:
+                        corr_value = first_row[0]
+                        if corr_value is not None:
+                            corr: float = float(corr_value)
+                            correlations[f"{col1}_{col2}"] = corr
                 except Exception as e:
                     logger.debug(
                         "Failed to compute correlation between %s and %s: %s",

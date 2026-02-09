@@ -156,6 +156,7 @@ class PrometheusExporter(MetricsExporter):
         self._host = host
         self._server = None
         self._registry = None
+        self._prometheus_modules: dict[str, Any] | None = None
 
         try:
             from prometheus_client import (
@@ -238,15 +239,19 @@ class PrometheusExporter(MetricsExporter):
 
             if cache_key not in self._metrics_cache:
                 # Create new metric
+                modules = self._prometheus_modules
+                if modules is None:
+                    continue
+
                 if metric.metric_type.value == "counter":
-                    prom_metric = self._prometheus_modules["Counter"](
+                    prom_metric = modules["Counter"](
                         metric.name,
                         metric.description,
                         label_names,
                         registry=self._prometheus_registry,
                     )
                 else:
-                    prom_metric = self._prometheus_modules["Gauge"](
+                    prom_metric = modules["Gauge"](
                         metric.name,
                         metric.description,
                         label_names,
@@ -307,6 +312,8 @@ class OpenTelemetryExporter(MetricsExporter):
         super().__init__()
         self._endpoint = endpoint
         self._service_name = service_name
+        self._otel_modules: dict[str, Any] | None = None
+        self._meter: Any = None
 
         try:
             from opentelemetry import metrics
@@ -417,6 +424,8 @@ class DatadogExporter(MetricsExporter):
         self._app_key = app_key
         self._host = host
         self._port = port
+        self._datadog_modules: dict[str, Any] | None = None
+        self._statsd: Any = None
 
         try:
             from datadog import DogStatsd, api, initialize

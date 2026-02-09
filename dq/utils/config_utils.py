@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Configuration loading and conversion utilities."""
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-import requests
+import requests  # type: ignore[import-untyped]
 from pyhocon import ConfigTree
 
 
@@ -36,15 +36,16 @@ def config_tree_to_dict(config_tree: ConfigTree) -> Dict[str, Any]:
     Returns:
         Plain Python dictionary.
     """
-    result = {}
+    result: Dict[str, Any] = {}
     for key, value in config_tree.items():
         if isinstance(value, ConfigTree):
             result[key] = config_tree_to_dict(value)
         elif isinstance(value, list):
-            result[key] = [
+            converted_list: List[Any] = [
                 config_tree_to_dict(item) if isinstance(item, ConfigTree) else item
                 for item in value
             ]
+            result[key] = converted_list
         else:
             result[key] = value
     return result
@@ -85,13 +86,13 @@ def load_from_adls(uri: str) -> str:
     spark = SparkSession.getActiveSession()
     if spark is None:
         raise RuntimeError("No active SparkSession found for ADLS access")
-    sc = spark.sparkContext
-    hadoop_conf = sc._jsc.hadoopConfiguration()
-    path = sc._jvm.org.apache.hadoop.fs.Path(uri)
-    fs = path.getFileSystem(hadoop_conf)
-    input_stream = fs.open(path)
-    reader = sc._jvm.java.io.BufferedReader(
-        sc._jvm.java.io.InputStreamReader(input_stream, "UTF-8")
+    sc = spark.sparkContext  # type: ignore[attr-defined]
+    hadoop_conf = sc._jsc.hadoopConfiguration()  # type: ignore[attr-defined]
+    path = sc._jvm.org.apache.hadoop.fs.Path(uri)  # type: ignore[attr-defined, union-attr]
+    fs = path.getFileSystem(hadoop_conf)  # type: ignore[attr-defined, union-attr]
+    input_stream = fs.open(path)  # type: ignore[attr-defined, union-attr]
+    reader = sc._jvm.java.io.BufferedReader(  # type: ignore[attr-defined, union-attr]
+        sc._jvm.java.io.InputStreamReader(input_stream, "UTF-8")  # type: ignore[attr-defined, union-attr]
     )
     lines = []
     line = reader.readLine()

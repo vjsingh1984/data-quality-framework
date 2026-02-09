@@ -181,9 +181,10 @@ class EngineRegistry(GenericRegistry["DQEngine"]):
             eps = entry_points()
             # Python 3.9+ compatibility
             if hasattr(eps, "select"):
-                dq_eps = eps.select(group="dq.engines")
+                dq_eps = list(eps.select(group="dq.engines"))
             else:
-                dq_eps = eps.get("dq.engines", [])
+                # Python 3.8 compatibility: filter manually
+                dq_eps = [ep for ep in eps if ep.group == "dq.engines"]
 
             for ep in dq_eps:
                 if ep.name == name:

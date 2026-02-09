@@ -92,7 +92,7 @@ class DQFramework:
         Returns:
             Sequence of configured metrics exporters.
         """
-        exporters = []
+        exporters: list[MetricsExporter] = []
         observability_config = self._config.get("dqframework.observability", {})
 
         # Check which exporters are enabled

@@ -30,7 +30,7 @@ class DeequEngine(DQEngine):
     """
 
     def __init__(self, config: ConfigTree):
-        self._spark_session = None
+        self._spark_session: Any = None  # Will be set to SparkSession in apply()
         super().__init__(config)
 
     def _validate_config(self) -> None:
