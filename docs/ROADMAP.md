@@ -77,7 +77,18 @@
 - Fixed profiler type issues:
   * Specific variable names for different stats types
   * Added null checks for Row indexing
+  * Added explicit type annotation for correlation coefficient
+- Fixed exporter variable naming in dq_framework.py
 - Reduced mypy errors from 40+ to 33
+
+**Remaining mypy issues (33 errors in 11 files):**
+- Missing type stubs for external libraries (requests)
+- SparkSession assignment type issues (requires Optional typing)
+- Notebook files (excluded from production)
+- EntryPoints attribute issues (importlib.metadata compatibility)
+- Config utility type issues (requires refactoring)
+
+These remaining issues require significant refactoring or external dependencies and are tracked for future resolution.
 
 #### 9.2: Documentation
 - Add API documentation with Sphinx
