@@ -173,7 +173,7 @@ class TestEngineDiscoveryValidation:
         from dq.engine.engine_registry import EngineRegistry
 
         # These engines should load successfully with the new logic
-        for engine_name in ["deequ", "custom", "drules", "schemavalidation"]:
+        for engine_name in ["deequ", "constraint", "drules", "schemavalidation"]:
             result = EngineRegistry.get_engine_class(engine_name)
             assert result is not None, f"Failed to load {engine_name}"
             # Verify it has the required apply method

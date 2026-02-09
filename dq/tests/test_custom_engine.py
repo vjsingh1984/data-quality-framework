@@ -8,7 +8,7 @@ os.environ["SPARK_VERSION"] = "3.5"
 import pytest
 from pyhocon import ConfigFactory
 
-from dq.engine.custom.custom_engine import ConstraintEngine
+from dq.engine.constraint.constraint_engine import ConstraintEngine
 
 
 @pytest.fixture
@@ -27,7 +27,7 @@ def custom_config():
     config_str = """
     sync { 
         name = "myrule1"
-        engine = "custom"
+        engine = "constraint"
         checks = [
         {
             constraint_name = "DistinctnessByGroup-check"
@@ -48,7 +48,7 @@ def custom_config_rate_of_change():
     config_str = """
     sync { 
         name = "myrule1"
-        engine = "custom"
+        engine = "constraint"
         checks = [
         {
             constraint_name = "rate_of_change_check"
@@ -78,7 +78,7 @@ def custom_config_lookup_based_column():
     config_str = """
     sync { 
         name = "reflookup"
-        engine = "custom"
+        engine = "constraint"
         checks = [
         {
             constraint_name = "ref_table_lookup"
@@ -99,7 +99,7 @@ def custom_config_wide_col_negative_values():
     config_str = """
     sync { 
         name = "NonNegativeCheckforWidetables"
-        engine = "custom"
+        engine = "constraint"
         checks = [
         {
             constraint_name = "Negative_values"

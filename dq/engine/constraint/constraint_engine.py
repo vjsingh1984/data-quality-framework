@@ -11,8 +11,8 @@ if TYPE_CHECKING:
     from pyspark.sql import DataFrame
 
 # Import constraints package to trigger auto-registration
-import dq.engine.custom.constraints  # noqa: F401
-from dq.engine.custom.constraint_registry import ConstraintRegistry
+import dq.engine.constraint.constraints  # noqa: F401
+from dq.engine.constraint.constraint_registry import ConstraintRegistry
 from dq.engine.dq_engine import DQEngine
 from dq.exceptions import ConfigurationError
 from dq.utils import constants, repository_utils

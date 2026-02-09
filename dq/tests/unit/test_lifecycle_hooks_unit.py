@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from dq.engine.custom.custom_engine import ConstraintEngine
+from dq.engine.constraint.constraint_engine import ConstraintEngine
 from dq.engine.dq_engine import DQEngine
 
 

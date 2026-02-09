@@ -6,7 +6,7 @@
 import pytest
 from pyhocon import ConfigFactory
 
-from dq.engine.custom.custom_engine import ConstraintEngine
+from dq.engine.constraint.constraint_engine import ConstraintEngine
 from dq.engine.deequ.deequ_engine import DeequEngine
 from dq.engine.drules.drules_engine import DrulesEngine
 from dq.engine.greatexpectations.greatexpectations_engine import (

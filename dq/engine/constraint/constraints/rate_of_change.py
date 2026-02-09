@@ -10,8 +10,10 @@ from typing import TYPE_CHECKING, List, Tuple
 if TYPE_CHECKING:
     from pyspark.sql import DataFrame
 
-from dq.engine.custom.constraint_registry import CustomConstraint
-from dq.engine.custom.constraints.distinctness_by_group import _check_min_max_threshold
+from dq.engine.constraint.constraint_registry import CustomConstraint
+from dq.engine.constraint.constraints.distinctness_by_group import (
+    _check_min_max_threshold,
+)
 
 logger = logging.getLogger(__name__)
 

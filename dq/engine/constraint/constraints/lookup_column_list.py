@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, List, Tuple
 if TYPE_CHECKING:
     from pyspark.sql import DataFrame
 
-from dq.engine.custom.constraint_registry import CustomConstraint
+from dq.engine.constraint.constraint_registry import CustomConstraint
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@
 import os
 
 # Import custom constraints to auto-register them
-import dq.engine.custom.constraints  # noqa: F401
+import dq.engine.constraint.constraints  # noqa: F401
 
 # Ensure SPARK_VERSION is set to avoid pydeequ import errors
 os.environ.setdefault("SPARK_VERSION", "3.5")

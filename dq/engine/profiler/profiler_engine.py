@@ -103,7 +103,7 @@ class ProfilerEngine(DQEngine):
         )
 
         # Export results if export_path is configured
-        export_path = self._config.get("export_path")
+        export_path = self._config.get("export_path", None)
         if export_path:
             self._export_profile(summary_metrics, export_path)
 

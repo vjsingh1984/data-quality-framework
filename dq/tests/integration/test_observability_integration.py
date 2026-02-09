@@ -79,7 +79,7 @@ class TestMultiEngineIntegration:
 
     def test_multi_engine_orchestrator_basic(self, spark):
         """Test basic multi-engine orchestration."""
-        from dq.engine.custom.constraint_engine import ConstraintEngine
+        from dq.engine.constraint.constraint_engine import ConstraintEngine
 
         # Create sample DataFrames
         df1 = spark.createDataFrame([(1, "a"), (2, "b")], ["id", "value"])
@@ -88,9 +88,35 @@ class TestMultiEngineIntegration:
         # Create orchestrator
         orchestrator = MultiEngineOrchestrator(strategy=ExecutionStrategy.SEQUENTIAL)
 
-        # Add engines with minimal config
-        config1 = ConfigFactory.parse_string("{}")
-        config2 = ConfigFactory.parse_string("{}")
+        # Add engines with minimal valid config
+        config1 = ConfigFactory.parse_string(
+            """
+        {
+            checks = [
+                {
+                    constraint = "DistinctnessByGroup"
+                    constraint_name = "test_check1"
+                    columns = ["id"]
+                    group_by = ["value"]
+                }
+            ]
+        }
+        """
+        )
+        config2 = ConfigFactory.parse_string(
+            """
+        {
+            checks = [
+                {
+                    constraint = "DistinctnessByGroup"
+                    constraint_name = "test_check2"
+                    columns = ["id"]
+                    group_by = ["code"]
+                }
+            ]
+        }
+        """
+        )
         engine1 = ConstraintEngine(config1)
         engine2 = ConstraintEngine(config2)
 
@@ -106,11 +132,12 @@ class TestMultiEngineIntegration:
         # Verify
         assert result.total_engines == 2
         assert result.successful_engines == 2
-        assert len(result.get_metrics()) == 0  # No checks = no metrics
+        # Should have metrics from the checks
+        assert len(result.get_metrics()) > 0
 
     def test_multi_engine_with_checks(self, spark):
         """Test multi-engine with actual validation checks."""
-        from dq.engine.custom.constraint_engine import ConstraintEngine
+        from dq.engine.constraint.constraint_engine import ConstraintEngine
 
         # Create sample DataFrame
         df = spark.createDataFrame(
@@ -126,8 +153,8 @@ class TestMultiEngineIntegration:
                     {
                         constraint = "DistinctnessByGroup"
                         constraint_name = "email_distinctness"
-                        column = "email"
-                        group_by_column = "id"
+                        columns = ["email"]
+                        group_by = ["id"]
                         min_threshold = 1
                     }
                 ]
@@ -154,10 +181,23 @@ class TestMultiEngineIntegration:
         """Test that sequential and parallel strategies both work."""
         import time
 
-        from dq.engine.custom.constraint_engine import ConstraintEngine
+        from dq.engine.constraint.constraint_engine import ConstraintEngine
 
         df = spark.createDataFrame([(1, "a"), (2, "b")], ["id", "value"])
-        config = ConfigFactory.parse_string("{}")
+        config = ConfigFactory.parse_string(
+            """
+        {
+            checks = [
+                {
+                    constraint = "DistinctnessByGroup"
+                    constraint_name = "test_check"
+                    columns = ["id"]
+                    group_by = ["value"]
+                }
+            ]
+        }
+        """
+        )
 
         # Test sequential
         seq_orchestrator = MultiEngineOrchestrator(
@@ -317,9 +357,7 @@ class TestFrameworkWithObservability:
             observability {
                 prometheus_enabled = false
             }
-            dataframes {
-                test_df = "memory.test_df"
-            }
+            dataframes {}
             dqrules = []
         }
         """

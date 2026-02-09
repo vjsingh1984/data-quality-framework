@@ -204,7 +204,7 @@ dqframework {
     }
     {
       name = "Custom Validation"
-      engine = "custom"
+      engine = "constraint"
       dataframes = ["users", "orders"]
       checks = [...]
     }

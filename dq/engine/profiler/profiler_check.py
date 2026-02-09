@@ -473,7 +473,7 @@ class ProfilerCheck:
             # Suggest pattern checks for string columns with detected patterns
             if column_profile.string_stats is not None:
                 patterns = column_profile.string_stats.patterns
-                row_count = len(dataframe)
+                row_count = profile["general"].row_count
                 if patterns.get("email", 0) > row_count * 0.5:
                     suggestions.append(
                         RuleSuggestion(
