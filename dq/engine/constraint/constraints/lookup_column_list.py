@@ -19,6 +19,29 @@ logger = logging.getLogger(__name__)
 _SQL_IDENTIFIER = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_.]*$")
 
 
+def _escape_identifier(name: str) -> str:
+    """Backtick-escape a potentially dotted SQL identifier.
+
+    Each dot-separated part is wrapped in backticks with any internal
+    backticks doubled, then the parts are rejoined with ``.``.
+
+    Example::
+        >>> _escape_identifier("catalog.schema.table")
+        '`catalog`.`schema`.`table`'
+        >>> _escape_identifier("my`cat.schema")
+        '`my``cat`.`schema`'
+
+    Args:
+        name: A plain or dot-qualified identifier.
+
+    Returns:
+        The escaped identifier with backticks.
+    """
+    if not name:
+        return name
+    return ".".join(f"`{part.replace('`', '``')}`" for part in name.split("."))
+
+
 class LookupColumnList(CustomConstraint):
     """Check if DataFrame column names are present as rows in a reference table."""
 
@@ -46,7 +69,7 @@ class LookupColumnList(CustomConstraint):
             raise ValueError(f"Invalid reference column name: '{ref_columns}'")
 
         reference_dataframe = spark_session.sql(
-            f"SELECT {ref_columns} FROM {ref_table}"
+            f"SELECT {_escape_identifier(ref_columns)} FROM {_escape_identifier(ref_table)}"  # nosec B608: identifiers are escaped
         )
         column_name_list = reference_dataframe.rdd.flatMap(lambda x: x).collect()
         column_list = list(map(str, column_name_list))

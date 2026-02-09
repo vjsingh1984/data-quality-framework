@@ -13,6 +13,29 @@ if TYPE_CHECKING:
     from pyspark.sql import DataFrame
 
 
+def _escape_identifier(name: str) -> str:
+    """Backtick-escape a potentially dotted SQL identifier.
+
+    Each dot-separated part is wrapped in backticks with any internal
+    backticks doubled, then the parts are rejoined with ``.``.
+
+    Example::
+        >>> _escape_identifier("catalog.schema.table")
+        '`catalog`.`schema`.`table`'
+        >>> _escape_identifier("my`cat.schema")
+        '`my``cat`.`schema`'
+
+    Args:
+        name: A plain or dot-qualified identifier.
+
+    Returns:
+        The escaped identifier with backticks.
+    """
+    if not name:
+        return name
+    return ".".join(f"`{part.replace('`', '``')}`" for part in name.split("."))
+
+
 class SchemaValidationCheck:
     """Builds PyDeequ checks from schema definitions.
 
@@ -54,7 +77,7 @@ class SchemaValidationCheck:
         if cache_key not in self._ref_cache:
             # Only calculate if cache key is missing
             reference_dataframe = self._spark_session.sql(
-                f"SELECT {ref_column} AS {ref_column}_alias FROM {table_name}"
+                f"SELECT {_escape_identifier(ref_column)} AS {_escape_identifier(f'{ref_column}_alias')} FROM {_escape_identifier(table_name)}"  # nosec B608: identifiers are escaped
             )
             distinct_count = reference_dataframe.distinct().count()
             if use_list_check and distinct_count > threshold_list_count:

@@ -87,8 +87,14 @@ class DeequCheck:
                     raise ValueError(f"Unsafe AST node type: {type(node).__name__}")
 
             # Compile from the validated AST (no eval of arbitrary strings)
+            # This is safe because:
+            # 1. AST is validated to contain only safe nodes (no function calls, imports, etc.)
+            # 2. __builtins__ is stripped to prevent access to built-in functions
+            # 3. Only allows lambda expressions with comparisons, arithmetic, and boolean ops
             code = compile(parsed_expr, "<assertion>", "eval")
-            return eval(code, {"__builtins__": {}})
+            return eval(
+                code, {"__builtins__": {}}
+            )  # nosec B307: safe eval with validated AST and no builtins
         except ValueError:
             raise
         except Exception as e:

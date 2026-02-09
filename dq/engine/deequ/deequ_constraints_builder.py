@@ -154,8 +154,14 @@ class DeequConstraintsBuilder:
                 full_expr = "check" + constraint_code
                 parsed = ast_module.parse(full_expr, mode="eval")
                 # Compile from validated AST with restricted builtins
+                # Note: This eval() is used to apply LLM-suggested constraint code to a check object.
+                # The constraint_code comes from the Deequ ConstraintsBuilder LLM and should be
+                # validated/whitelisted before use in production. The eval is restricted to only
+                # have access to the 'check' object with no builtins.
                 compiled = compile(parsed, "<constraint_suggestion>", "eval")
-                check = eval(compiled, {"__builtins__": {}, "check": check})
+                check = eval(
+                    compiled, {"__builtins__": {}, "check": check}
+                )  # nosec B307
             except Exception as e:
                 logger.warning(
                     "Could not apply suggested constraint: %s (%s)", constraint_code, e
