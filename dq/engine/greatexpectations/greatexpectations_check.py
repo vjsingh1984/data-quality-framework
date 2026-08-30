@@ -34,7 +34,9 @@ class GreatexpectationsCheck:
             if expectation_method:
                 logger.debug(
                     "Applying %s on column %s with args: %s",
-                    expectation_type, column, kwargs,
+                    expectation_type,
+                    column,
+                    kwargs,
                 )
                 expectation_method(column, **kwargs)
             else:

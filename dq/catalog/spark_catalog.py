@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Spark catalog provider - default catalog using Spark's built-in catalog."""
+
 import logging
 
 from dq.catalog.base import CatalogProvider

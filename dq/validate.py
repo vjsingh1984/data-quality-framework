@@ -2,14 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Validation utilities for Data Quality Framework."""
+
 import argparse
 import sys
 import json
 import logging
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -31,11 +31,17 @@ def validate_config(config_path: str) -> bool:
 
         if parsed.scheme == "" or parsed.scheme == "file":
             # Local file
-            file_path = config_path.replace("file://", "") if parsed.scheme == "file" else config_path
+            file_path = (
+                config_path.replace("file://", "")
+                if parsed.scheme == "file"
+                else config_path
+            )
             config = ConfigFactory.parse_file(file_path)
         else:
             # For s3://, http://, etc., we'd need additional handling
-            logger.warning(f"Remote config validation not fully supported for scheme: {parsed.scheme}")
+            logger.warning(
+                f"Remote config validation not fully supported for scheme: {parsed.scheme}"
+            )
             return True
 
         # Check required keys
@@ -72,22 +78,17 @@ Examples:
   dq-validate config.conf
   dq-validate file://path/to/config.conf
   dq-validate --format json config.conf
-        """
+        """,
     )
-    parser.add_argument(
-        "config",
-        help="Path to HOCON configuration file to validate"
-    )
+    parser.add_argument("config", help="Path to HOCON configuration file to validate")
     parser.add_argument(
         "--format",
         choices=["text", "json"],
         default="text",
-        help="Output format (default: text)"
+        help="Output format (default: text)",
     )
     parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
     )
 
     args = parser.parse_args()
@@ -98,10 +99,7 @@ Examples:
     is_valid = validate_config(args.config)
 
     if args.format == "json":
-        result = {
-            "config": args.config,
-            "valid": is_valid
-        }
+        result = {"config": args.config, "valid": is_valid}
         print(json.dumps(result, indent=2))
     else:
         if is_valid:

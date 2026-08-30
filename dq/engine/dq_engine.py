@@ -32,4 +32,3 @@ class DQEngine(ABC):
             and ``details`` keys.
         """
         raise NotImplementedError("Subclasses must implement this method")
-

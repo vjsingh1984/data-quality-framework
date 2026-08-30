@@ -1,0 +1,166 @@
+name: Owner Private CI
+
+# This workflow is loaded only from the protected base branch. Pull requests do
+# not control its runner selection or steps. The identity checks are evaluated
+# by GitHub before a self-hosted runner is assigned.
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: owner-private-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  OWNER_GITHUB_USER_ID: "5168752"
+
+jobs:
+  owner-lint:
+    name: Owner lint
+    environment: owner-private-ci
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.user.id == 5168752 &&
+      github.actor_id == '5168752' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Linux, X64, public-overflow]
+    timeout-minutes: 20
+    steps:
+      - name: Verify trusted PR identity
+        env:
+          ACTOR_ID: ${{ github.actor_id }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_AUTHOR_ID: ${{ github.event.pull_request.user.id }}
+        run: |
+          set -euo pipefail
+          test "${ACTOR_ID}" = "${OWNER_GITHUB_USER_ID}"
+          test "${PR_AUTHOR_ID}" = "${OWNER_GITHUB_USER_ID}"
+          test "${HEAD_REPOSITORY}" = "${GITHUB_REPOSITORY}"
+
+      - name: Check out the exact trusted PR revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          clean: true
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pip install poetry==2.4.2
+
+      - name: Install dependencies
+        run: poetry install --with dev
+
+      - name: Check formatting
+        run: poetry run black --check dq/
+
+      - name: Lint
+        run: >-
+          poetry run flake8 dq/ --exclude=dq/notebooks
+          --select E9,F63,F7,F82
+
+      - name: Security scan
+        run: poetry run bandit -r dq/ -x tests -s B101 -lll -q
+
+      - name: Dependency audit
+        run: poetry run pip-audit --skip-editable
+
+  owner-test:
+    name: Owner test (Python ${{ matrix.python-version }})
+    environment: owner-private-ci
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.user.id == 5168752 &&
+      github.actor_id == '5168752' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Linux, X64, public-overflow]
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - name: Verify trusted PR identity
+        env:
+          ACTOR_ID: ${{ github.actor_id }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_AUTHOR_ID: ${{ github.event.pull_request.user.id }}
+        run: |
+          set -euo pipefail
+          test "${ACTOR_ID}" = "${OWNER_GITHUB_USER_ID}"
+          test "${PR_AUTHOR_ID}" = "${OWNER_GITHUB_USER_ID}"
+          test "${HEAD_REPOSITORY}" = "${GITHUB_REPOSITORY}"
+
+      - name: Check out the exact trusted PR revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          clean: true
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "11"
+
+      - name: Install Poetry
+        run: pip install poetry==2.4.2
+
+      - name: Install dependencies
+        run: poetry install --with dev -E spark -E deequ -E aws
+
+      - name: Download Deequ JAR
+        run: |
+          mkdir -p lib
+          wget -q -O lib/deequ-2.0.8-spark-3.5.jar \
+            https://repo1.maven.org/maven2/com/amazon/deequ/deequ/2.0.8-spark-3.5/deequ-2.0.8-spark-3.5.jar
+
+      - name: Run tests
+        run: >-
+          poetry run pytest dq/tests/ -v --tb=short
+          --cov=dq --cov-branch --cov-report=term-missing
+          --cov-report=xml --cov-fail-under=45
+        env:
+          SPARK_VERSION: "3.5"
+
+  owner-build:
+    name: Owner build
+    environment: owner-private-ci
+    needs: [owner-lint, owner-test]
+    runs-on: [self-hosted, Linux, X64, public-overflow]
+    timeout-minutes: 20
+    steps:
+      - name: Check out the exact trusted PR revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          clean: true
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pip install poetry==2.4.2
+
+      - name: Build package
+        run: poetry build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: owner-private-dist-${{ github.event.pull_request.head.sha }}
+          path: dist/

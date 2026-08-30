@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Unity Catalog provider for Databricks."""
+
 import logging
 
 from dq.catalog.base import CatalogProvider

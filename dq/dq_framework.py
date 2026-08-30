@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Main orchestrator for the Data Quality Framework."""
+
 import logging
 import json
 import re
@@ -96,24 +97,20 @@ class DQFramework:
         """
         parsed_url = urlparse(config)
         try:
-            if parsed_url.scheme == '':
+            if parsed_url.scheme == "":
                 return ConfigFactory.parse_string(config)
-            elif parsed_url.scheme == 's3':
+            elif parsed_url.scheme == "s3":
                 return ConfigFactory.parse_string(
                     config_utils.load_from_s3(
                         bucket=parsed_url.netloc, key=parsed_url.path
                     )
                 )
-            elif parsed_url.scheme == 'abfss':
-                return ConfigFactory.parse_string(
-                    config_utils.load_from_adls(config)
-                )
-            elif parsed_url.scheme == 'file':
+            elif parsed_url.scheme == "abfss":
+                return ConfigFactory.parse_string(config_utils.load_from_adls(config))
+            elif parsed_url.scheme == "file":
                 return ConfigFactory.parse_file(config.replace("file://", ""))
-            elif parsed_url.scheme in ['http', 'https']:
-                return ConfigFactory.parse_string(
-                    config_utils.load_from_uri(config)
-                )
+            elif parsed_url.scheme in ["http", "https"]:
+                return ConfigFactory.parse_string(config_utils.load_from_uri(config))
             else:
                 raise ConfigurationError(
                     f"Unsupported config scheme: {parsed_url.scheme}"
@@ -141,9 +138,7 @@ class DQFramework:
                 if df is not None:
                     dataframes[df_name] = df
             except Exception as e:
-                logger.warning(
-                    "Could not load DataFrame '%s': %s", df_name, e
-                )
+                logger.warning("Could not load DataFrame '%s': %s", df_name, e)
 
         if self.default_dataframe is not None and "default" not in dataframes:
             dataframes["default"] = self.default_dataframe
@@ -166,7 +161,7 @@ class DQFramework:
         if isinstance(table_ref, str):
             # Simple string reference: could be "table", "db.table", or "catalog.db.table"
             return self._catalog_provider.get_dataframe(table_ref)
-        elif hasattr(table_ref, 'get'):
+        elif hasattr(table_ref, "get"):
             # Structured reference with explicit components
             table = table_ref.get("table", df_name)
             database = table_ref.get("database", None)
@@ -193,7 +188,7 @@ class DQFramework:
         cumulative_metrics = []
 
         for rule_config in self._config.get("dqframework.dqrules", []):
-            df_names = rule_config.get('dataframes', ["default"])
+            df_names = rule_config.get("dataframes", ["default"])
             engine_name = rule_config.get(constants.DQ_ENGINE_NAME, None)
 
             if engine_name is None:
@@ -207,12 +202,11 @@ class DQFramework:
             for df_name in df_names:
                 dataframe = self.get_dataframe(df_name)
                 summary_metrics = engine.apply(
-                    dataframe,
-                    repository=self._config.get("dqframework.repository", {})
+                    dataframe, repository=self._config.get("dqframework.repository", {})
                 )
                 for metric in summary_metrics:
-                    metric['ts'] = current_time_in_millis
-                    metric['jobid'] = self._spark.sparkContext.applicationId
+                    metric["ts"] = current_time_in_millis
+                    metric["jobid"] = self._spark.sparkContext.applicationId
                     if constants.DQ_METRICS_RESULT_SUCCESS_KEY in metric:
                         if not metric[constants.DQ_METRICS_RESULT_SUCCESS_KEY]:
                             logger.warning("Check failed: %s", json.dumps(metric))
@@ -244,9 +238,7 @@ class DQFramework:
             return self.dataframes[df_name]
         elif df_name in [t.name for t in self._spark.catalog.listTables()]:
             if not _TABLE_NAME_PATTERN.match(df_name):
-                raise DataFrameNotFoundError(
-                    f"Invalid table name format: '{df_name}'"
-                )
+                raise DataFrameNotFoundError(f"Invalid table name format: '{df_name}'")
             return self._spark.table(df_name)
         else:
             # Try the catalog provider as last resort

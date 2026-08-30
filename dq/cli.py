@@ -2,13 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Command-line interface for Data Quality Framework."""
+
 import argparse
 import sys
 import logging
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -23,26 +23,24 @@ Examples:
   dq-framework config.conf
   dq-framework file://path/to/config.conf
   dq-framework s3://bucket/path/to/config.conf --spark-master spark://host:7077
-        """
+        """,
     )
     parser.add_argument(
         "config",
-        help="Path to HOCON configuration file (supports file://, s3://, abfss://, http://)"
+        help="Path to HOCON configuration file (supports file://, s3://, abfss://, http://)",
     )
     parser.add_argument(
         "--spark-master",
         default="local[*]",
-        help="Spark master URL (default: local[*])"
+        help="Spark master URL (default: local[*])",
     )
     parser.add_argument(
         "--app-name",
         default="dq-framework",
-        help="Spark application name (default: dq-framework)"
+        help="Spark application name (default: dq-framework)",
     )
     parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
     )
 
     args = parser.parse_args()
@@ -55,10 +53,11 @@ Examples:
         from dq.dq_framework import DQFramework
 
         logger.info(f"Initializing Spark session with master: {args.spark_master}")
-        spark = SparkSession.builder \
-            .master(args.spark_master) \
-            .appName(args.app_name) \
+        spark = (
+            SparkSession.builder.master(args.spark_master)
+            .appName(args.app_name)
             .getOrCreate()
+        )
 
         logger.info(f"Loading configuration from: {args.config}")
         framework = DQFramework(spark, args.config)
@@ -89,12 +88,15 @@ Examples:
 
     except ImportError as e:
         logger.error(f"Missing dependency: {e}")
-        logger.error("Install Spark support with: pip install data-quality-framework[spark]")
+        logger.error(
+            "Install Spark support with: pip install data-quality-framework[spark]"
+        )
         return 1
     except Exception as e:
         logger.error(f"Error running data quality checks: {e}")
         if args.verbose:
             import traceback
+
             traceback.print_exc()
         return 1
 

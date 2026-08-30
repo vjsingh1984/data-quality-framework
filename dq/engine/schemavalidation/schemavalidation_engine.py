@@ -47,21 +47,27 @@ class SchemavalidationEngine(DeequEngine):
         if repository:
             current_milli_time = ResultKey.current_milli_time()
             repository_utils.save_to_repository(
-                repository, successMetrics,
-                constants.DQ_REPOSITORY_METRICS, current_milli_time,
+                repository,
+                successMetrics,
+                constants.DQ_REPOSITORY_METRICS,
+                current_milli_time,
             )
             repository_utils.save_to_repository(
-                repository, checkVerifications,
-                constants.DQ_REPOSITORY_VERIFICATIONS, current_milli_time,
+                repository,
+                checkVerifications,
+                constants.DQ_REPOSITORY_VERIFICATIONS,
+                current_milli_time,
             )
 
         summarymetrics = []
         for check in checkVerifications.collect():
-            summarymetrics.append({
-                "check": check["check"],
-                "success": check["check_status"] == "Success",
-                "details": check,
-            })
+            summarymetrics.append(
+                {
+                    "check": check["check"],
+                    "success": check["check_status"] == "Success",
+                    "details": check,
+                }
+            )
         return summarymetrics
 
     def validate_dataframe(self, df: DataFrame):
@@ -83,7 +89,11 @@ class SchemavalidationEngine(DeequEngine):
         )
 
         checks = schema_validation_check.apply_checks(df)
-        joined_df = schema_validation_check.get_joined_dataframe_from_foreign_key_constraints(df)
+        joined_df = (
+            schema_validation_check.get_joined_dataframe_from_foreign_key_constraints(
+                df
+            )
+        )
 
         if single_check_mode:
             verification_result = (
@@ -93,7 +103,9 @@ class SchemavalidationEngine(DeequEngine):
                 .run()
             )
         else:
-            verification_run_builder = VerificationSuite(self._sparkSession).onData(joined_df)
+            verification_run_builder = VerificationSuite(self._sparkSession).onData(
+                joined_df
+            )
             for check in checks:
                 verification_run_builder = verification_run_builder.addCheck(check)
             verification_result = verification_run_builder.run()

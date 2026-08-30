@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Configuration loading and conversion utilities."""
+
 from typing import Any, Dict, List, Optional, Union
 
 from pyhocon import ConfigTree
@@ -42,7 +43,10 @@ def config_tree_to_dict(config_tree: ConfigTree) -> Dict[str, Any]:
         if isinstance(value, ConfigTree):
             result[key] = config_tree_to_dict(value)
         elif isinstance(value, list):
-            result[key] = [config_tree_to_dict(item) if isinstance(item, ConfigTree) else item for item in value]
+            result[key] = [
+                config_tree_to_dict(item) if isinstance(item, ConfigTree) else item
+                for item in value
+            ]
         else:
             result[key] = value
     return result
@@ -59,9 +63,9 @@ def load_from_s3(bucket: str, key: str) -> str:
         File contents as a UTF-8 string.
     """
     session = boto3.session.Session()
-    s3 = session.resource('s3')
+    s3 = session.resource("s3")
     res = s3.Object(bucket, key)
-    return res.get()['Body'].read().decode("utf-8")
+    return res.get()["Body"].read().decode("utf-8")
 
 
 def load_from_adls(uri: str) -> str:

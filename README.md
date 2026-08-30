@@ -174,7 +174,7 @@ Place your engine in `dq/engine/mycustom/mycustom_engine.py` and reference it in
 
 - Python 3.9+
 - Apache Spark 3.5+ (for Spark-based engines)
-- Deequ JAR file (for Deequ engine): `lib/deequ-2.0.7-spark-3.5.jar`
+- Deequ JAR file (for Deequ engine): `lib/deequ-2.0.8-spark-3.5.jar`
 
 ## Development
 

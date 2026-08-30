@@ -37,7 +37,9 @@ class DeequConstraintsBuilder:
 
         return suggested_constraints
 
-    def save_in_hocon_format(self, constraint_suggestions, dataset_name, dq_metrics_table, file_name):
+    def save_in_hocon_format(
+        self, constraint_suggestions, dataset_name, dq_metrics_table, file_name
+    ):
         """Save constraint suggestions as a HOCON configuration file.
 
         Args:
@@ -52,13 +54,15 @@ class DeequConstraintsBuilder:
         transform_suggestion = []
         for cons in constraint_suggestions["constraint_suggestions"]:
             s = cons["code_for_constraint"]
-            constraint = s[1:s.index('(')]
-            assertion = ''
+            constraint = s[1 : s.index("(")]
+            assertion = ""
             if "lambda" in s:
-                assertion = s[s.index('lambda'):s.index(',', s.index('lambda'))]
-            datatype = ''
+                assertion = s[s.index("lambda") : s.index(",", s.index("lambda"))]
+            datatype = ""
             if "hasDataType" in s:
-                datatype = str(cons["current_value"][cons["current_value"].index(':') + 1:]).strip()
+                datatype = str(
+                    cons["current_value"][cons["current_value"].index(":") + 1 :]
+                ).strip()
             check_str = f"""{{
                                 alias = "{cons['constraint_name']}"
                                 column = "{cons['column_name']}"
@@ -68,7 +72,7 @@ class DeequConstraintsBuilder:
                                 datatype = "{datatype}"
                             }},"""
             transform_suggestion.append(check_str)
-        transform_suggestion = ''.join(transform_suggestion).replace("'", "")
+        transform_suggestion = "".join(transform_suggestion).replace("'", "")
         dq_conf = f"""
             dqframework {{
             requiredscore = 1.0
@@ -92,6 +96,10 @@ class DeequConstraintsBuilder:
           }}
         """
 
+        parent_directory = os.path.dirname(file_name)
+        if parent_directory:
+            os.makedirs(parent_directory, exist_ok=True)
+
         with open(file_name, "w") as conf_file:
             conf_file.write(dq_conf)
         logger.info("Config file saved to: %s", file_name)
@@ -108,18 +116,21 @@ class DeequConstraintsBuilder:
         Returns:
             DataFrame of check results.
         """
-        for suggestion in constraints['constraint_suggestions']:
+        for suggestion in constraints["constraint_suggestions"]:
             logger.debug(
                 "Suggested constraint for '%s': %s",
-                suggestion['column_name'], suggestion['description'],
+                suggestion["column_name"],
+                suggestion["description"],
             )
-            logger.debug("Rule description: '%s'", suggestion['rule_description'])
-            logger.debug("Python code: `%s`", suggestion['code_for_constraint'])
+            logger.debug("Rule description: '%s'", suggestion["rule_description"])
+            logger.debug("Python code: `%s`", suggestion["code_for_constraint"])
 
         pydeequ_validation_string = ""
 
-        for suggestion in constraints['constraint_suggestions']:
-            pydeequ_validation_string = pydeequ_validation_string + suggestion["code_for_constraint"]
+        for suggestion in constraints["constraint_suggestions"]:
+            pydeequ_validation_string = (
+                pydeequ_validation_string + suggestion["code_for_constraint"]
+            )
 
         logger.debug("Validation string: %s", pydeequ_validation_string)
 

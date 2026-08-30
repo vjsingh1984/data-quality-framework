@@ -3,6 +3,7 @@
 
 #!/usr/bin/env python
 """Dynamic engine loader for the Data Quality Framework."""
+
 import importlib
 import re
 import logging
@@ -47,9 +48,7 @@ class EngineLoader:
             )
 
         try:
-            module = importlib.import_module(
-                f"dq.engine.{name}.{name}_engine"
-            )
+            module = importlib.import_module(f"dq.engine.{name}.{name}_engine")
             class_name = f"{name.capitalize()}Engine"
             engine_class = getattr(module, class_name)
 
@@ -57,9 +56,7 @@ class EngineLoader:
             return engine_class(*args, **kwargs)
 
         except ModuleNotFoundError as e:
-            raise ImportError(
-                f"Engine module '{name}_engine' not found: {e}"
-            ) from e
+            raise ImportError(f"Engine module '{name}_engine' not found: {e}") from e
 
         except AttributeError as e:
             raise AttributeError(

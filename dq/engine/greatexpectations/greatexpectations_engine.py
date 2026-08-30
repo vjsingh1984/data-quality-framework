@@ -4,7 +4,6 @@
 import logging
 from typing import Optional, List, Dict, Any
 
-import great_expectations as ge
 from dq.engine.dq_engine import DQEngine
 from pyhocon import ConfigTree
 from pyspark.sql import DataFrame
@@ -34,6 +33,14 @@ class GreatexpectationsEngine(DQEngine):
         Returns:
             List of metric dicts with ``check``, ``success``, ``details`` keys.
         """
+        try:
+            import great_expectations as ge
+        except ImportError as exc:
+            raise ImportError(
+                "The Great Expectations engine requires the optional "
+                "great_expectations package."
+            ) from exc
+
         rule_name = self._config.get(constants.DQ_RULE_NAME, "Unknown")
         engine_name = self._config.get(constants.DQ_ENGINE_NAME, "Unknown")
         logger.info("Processing %s with %s Engine", rule_name, engine_name)
@@ -47,13 +54,17 @@ class GreatexpectationsEngine(DQEngine):
         metrics = self._extract_metrics_from_validation_output(validation_output)
         return metrics
 
-    def _extract_metrics_from_validation_output(self, validation_output) -> List[Dict[str, Any]]:
+    def _extract_metrics_from_validation_output(
+        self, validation_output
+    ) -> List[Dict[str, Any]]:
         """Extract metric dictionaries from GE validation output."""
         summarymetrics = []
         for exp_result in validation_output.results:
-            summarymetrics.append({
-                "check": exp_result.expectation_config.expectation_type,
-                "success": exp_result.success,
-                "details": exp_result.result,
-            })
+            summarymetrics.append(
+                {
+                    "check": exp_result.expectation_config.expectation_type,
+                    "success": exp_result.success,
+                    "details": exp_result.result,
+                }
+            )
         return summarymetrics
