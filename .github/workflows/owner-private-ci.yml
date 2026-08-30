@@ -53,7 +53,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install Poetry
-        run: pip install poetry
+        run: pip install poetry==2.4.2
 
       - name: Install dependencies
         run: poetry install --with dev
@@ -62,10 +62,15 @@ jobs:
         run: poetry run black --check dq/
 
       - name: Lint
-        run: poetry run flake8 dq/ --max-line-length 88 --extend-ignore E203,W503
+        run: >-
+          poetry run flake8 dq/ --exclude=dq/notebooks
+          --select E9,F63,F7,F82
 
       - name: Security scan
-        run: poetry run bandit -r dq/ -x tests -s B101 -q
+        run: poetry run bandit -r dq/ -x tests -s B101 -lll -q
+
+      - name: Dependency audit
+        run: poetry run pip-audit --skip-editable
 
   owner-test:
     name: Owner test (Python ${{ matrix.python-version }})
@@ -111,19 +116,22 @@ jobs:
           java-version: "11"
 
       - name: Install Poetry
-        run: pip install poetry
+        run: pip install poetry==2.4.2
 
       - name: Install dependencies
-        run: poetry install --with dev -E spark -E deequ
+        run: poetry install --with dev -E spark -E deequ -E aws
 
       - name: Download Deequ JAR
         run: |
           mkdir -p lib
-          wget -q -O lib/deequ-2.0.7-spark-3.5.jar \
-            https://repo1.maven.org/maven2/com/amazon/deequ/deequ/2.0.7-spark-3.5/deequ-2.0.7-spark-3.5.jar
+          wget -q -O lib/deequ-2.0.8-spark-3.5.jar \
+            https://repo1.maven.org/maven2/com/amazon/deequ/deequ/2.0.8-spark-3.5/deequ-2.0.8-spark-3.5.jar
 
       - name: Run tests
-        run: poetry run pytest dq/tests/ -v --tb=short
+        run: >-
+          poetry run pytest dq/tests/ -v --tb=short
+          --cov=dq --cov-branch --cov-report=term-missing
+          --cov-report=xml --cov-fail-under=45
         env:
           SPARK_VERSION: "3.5"
 
@@ -146,7 +154,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install Poetry
-        run: pip install poetry
+        run: pip install poetry==2.4.2
 
       - name: Build package
         run: poetry build

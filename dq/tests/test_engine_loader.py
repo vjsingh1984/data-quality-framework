@@ -7,10 +7,11 @@ from pyhocon import ConfigFactory
 import pytest
 from dq.utils import constants
 
+
 @pytest.fixture
 def dqrule_schemavalidation_config():
     return ConfigFactory.parse_string(
-    """{
+        """{
             name = "dataset-rules-000"
             engine = "schemavalidation"
             schema = {
@@ -34,10 +35,11 @@ def dqrule_schemavalidation_config():
         """
     )
 
+
 @pytest.fixture
 def dqrule_deequ_config():
     return ConfigFactory.parse_string(
-    """{ 
+        """{
             name = "dataset-rules-001"
             engine = "deequ"
             async = true
@@ -61,10 +63,11 @@ def dqrule_deequ_config():
         """
     )
 
+
 @pytest.fixture
 def dqrule_greatexpectations_config():
     return ConfigFactory.parse_string(
-    """
+        """
     {
         name = "dataset-rule-002"
         engine = "greatexpectations"
@@ -87,12 +90,14 @@ def dqrule_greatexpectations_config():
             }
         ]
     }
-    """)
+    """
+    )
+
 
 @pytest.fixture
 def dqrule_notdefined_config():
     return ConfigFactory.parse_string(
-    """
+        """
     {
         name = "dataset-rule-002"
         engine = "unknown"
@@ -105,28 +110,35 @@ def dqrule_notdefined_config():
     """
     )
 
+
 def process_engine_load_with_config(config):
-    return EngineLoader().load_engine(config.get(constants.DQ_ENGINE_NAME,None), config)
-    
+    return EngineLoader().load_engine(
+        config.get(constants.DQ_ENGINE_NAME, None), config
+    )
+
+
 def test_deequ_engine_load_success(dqrule_deequ_config):
-    engine = process_engine_load_with_config(config = dqrule_deequ_config)
+    engine = process_engine_load_with_config(config=dqrule_deequ_config)
     assert isinstance(engine, DQEngine)
+
 
 def test_greatexpectations_engine_load_success(dqrule_greatexpectations_config):
-    engine = process_engine_load_with_config(config = dqrule_greatexpectations_config)
+    engine = process_engine_load_with_config(config=dqrule_greatexpectations_config)
     assert isinstance(engine, DQEngine)
 
+
 def test_schemavalidation_engine_load_success(dqrule_schemavalidation_config):
-    engine = process_engine_load_with_config(config = dqrule_schemavalidation_config)
+    engine = process_engine_load_with_config(config=dqrule_schemavalidation_config)
     assert isinstance(engine, DQEngine)
+
 
 def test_notdefined_engine_load_exception(dqrule_notdefined_config):
     exceptionOccured = False
     importerror = False
     attributeerror = False
-    
+
     try:
-        engine = process_engine_load_with_config(config = dqrule_notdefined_config)
+        engine = process_engine_load_with_config(config=dqrule_notdefined_config)
     except ImportError as e:
         exceptionOccured = True
         importerror = True

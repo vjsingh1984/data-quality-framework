@@ -95,9 +95,7 @@ class CatalogFactory:
             conf = spark_session.sparkContext.getConf()
 
             # Check for Unity Catalog / Delta Catalog
-            spark_catalog = conf.get(
-                "spark.sql.catalog.spark_catalog", ""
-            )
+            spark_catalog = conf.get("spark.sql.catalog.spark_catalog", "")
             if "DeltaCatalog" in spark_catalog or "UnityCatalog" in spark_catalog:
                 logger.info("Auto-detected Unity Catalog from SparkSession config")
                 return "unity"

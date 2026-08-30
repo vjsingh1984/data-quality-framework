@@ -42,9 +42,20 @@ def _parse_glue_type(glue_type_str):
         PySpark DataType instance.
     """
     from pyspark.sql.types import (
-        StringType, IntegerType, LongType, ShortType, ByteType,
-        FloatType, DoubleType, BooleanType, BinaryType,
-        DateType, TimestampType, DecimalType, CharType, VarcharType,
+        StringType,
+        IntegerType,
+        LongType,
+        ShortType,
+        ByteType,
+        FloatType,
+        DoubleType,
+        BooleanType,
+        BinaryType,
+        DateType,
+        TimestampType,
+        DecimalType,
+        CharType,
+        VarcharType,
     )
     import re
 
@@ -89,9 +100,7 @@ def _parse_glue_type(glue_type_str):
         return type_map[glue_lower]
 
     # Fallback for complex types (array, struct, map)
-    logger.warning(
-        "Unmapped Glue type '%s', falling back to StringType", glue_type_str
-    )
+    logger.warning("Unmapped Glue type '%s', falling back to StringType", glue_type_str)
     return StringType()
 
 
@@ -143,8 +152,11 @@ class GlueCatalogProvider(CatalogProvider):
         if self._glue_client is None:
             try:
                 import boto3
+
                 if self._region_name:
-                    self._glue_client = boto3.client("glue", region_name=self._region_name)
+                    self._glue_client = boto3.client(
+                        "glue", region_name=self._region_name
+                    )
                 else:
                     self._glue_client = boto3.client("glue")
             except ImportError:
@@ -196,7 +208,9 @@ class GlueCatalogProvider(CatalogProvider):
             logger.warning(
                 "Could not fetch schema from Glue API for %s.%s: %s. "
                 "Falling back to Spark catalog.",
-                db_name, table_name, e
+                db_name,
+                table_name,
+                e,
             )
             # Fall back to Spark
             full_name = self._build_full_table_name(table_name, db_name)
@@ -299,11 +313,17 @@ class GlueCatalogProvider(CatalogProvider):
             comment = col.get("Comment", "")
             spark_type = _parse_glue_type(col_type)
             # Glue does not track nullable per-column; default to True
-            fields.append(StructField(col_name, spark_type, nullable=True, metadata={"comment": comment}))
+            fields.append(
+                StructField(
+                    col_name, spark_type, nullable=True, metadata={"comment": comment}
+                )
+            )
 
         logger.debug(
             "Resolved Glue schema for %s.%s: %d columns",
-            database, table_name, len(fields)
+            database,
+            table_name,
+            len(fields),
         )
         return StructType(fields)
 

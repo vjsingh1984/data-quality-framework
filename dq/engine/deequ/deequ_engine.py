@@ -76,20 +76,26 @@ class DeequEngine(DQEngine):
         if repository:
             current_milli_time = ResultKey.current_milli_time()
             repository_utils.save_to_repository(
-                repository, successMetrics,
-                constants.DQ_REPOSITORY_METRICS, current_milli_time,
+                repository,
+                successMetrics,
+                constants.DQ_REPOSITORY_METRICS,
+                current_milli_time,
             )
             repository_utils.save_to_repository(
-                repository, checkVerifications,
-                constants.DQ_REPOSITORY_VERIFICATIONS, current_milli_time,
+                repository,
+                checkVerifications,
+                constants.DQ_REPOSITORY_VERIFICATIONS,
+                current_milli_time,
             )
 
         summarymetrics = []
         for check in checkVerifications.collect():
-            summarymetrics.append({
-                "check": check["check"],
-                "success": check["check_status"] == "Success",
-                "details": check,
-            })
+            summarymetrics.append(
+                {
+                    "check": check["check"],
+                    "success": check["check_status"] == "Success",
+                    "details": check,
+                }
+            )
 
         return summarymetrics
