@@ -8,6 +8,12 @@ on:
 
 jobs:
   lint:
+    if: >-
+      github.event_name != 'pull_request' ||
+      vars.OWNER_PRIVATE_CI_ENABLED != 'true' ||
+      github.actor_id != '5168752' ||
+      github.event.pull_request.user.id != 5168752 ||
+      github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -32,6 +38,12 @@ jobs:
         run: poetry run pip-audit --skip-editable
 
   test:
+    if: >-
+      github.event_name != 'pull_request' ||
+      vars.OWNER_PRIVATE_CI_ENABLED != 'true' ||
+      github.actor_id != '5168752' ||
+      github.event.pull_request.user.id != 5168752 ||
+      github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -76,6 +88,12 @@ jobs:
           SPARK_VERSION: "3.5"
 
   build:
+    if: >-
+      github.event_name != 'pull_request' ||
+      vars.OWNER_PRIVATE_CI_ENABLED != 'true' ||
+      github.actor_id != '5168752' ||
+      github.event.pull_request.user.id != 5168752 ||
+      github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     needs: [lint, test]
     steps:
