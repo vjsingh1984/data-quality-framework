@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """AWS Glue Data Catalog provider."""
+
 import logging
 
 from dq.catalog.base import CatalogProvider

@@ -308,8 +308,7 @@ def test_schemavalidation_float_type_success(spark):
     )
     df = spark.createDataFrame(data=data, schema=data_schema)
     df.createOrReplaceTempView("temp_data_table")
-    scemavalidation_config = ConfigFactory.parse_string(
-        """
+    scemavalidation_config = ConfigFactory.parse_string("""
     {
         name = "schemavalidation with null values and not null enabled constraint for receving failure"
         engine = schemavalidation
@@ -318,8 +317,7 @@ def test_schemavalidation_float_type_success(spark):
             table = "temp_data_table"
         }
     }
-    """
-    )
+    """)
     schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
@@ -414,8 +412,7 @@ def test_nullable_false_schemavalidation_single_check_success(spark):
     tablename = "temp_null_false_data_table_success"
     df = spark.createDataFrame(incomingnullable_data, colnames)
     df.createOrReplaceTempView(tablename)
-    not_null_constraint_config = ConfigFactory.parse_string(
-        f"""
+    not_null_constraint_config = ConfigFactory.parse_string(f"""
     {{
         name = "schemavalidation with not null values and not null enabled constraint for success"
         engine = schemavalidation
@@ -425,8 +422,7 @@ def test_nullable_false_schemavalidation_single_check_success(spark):
             not_null_columns = {json.dumps(colnames, indent=2)}
         }}
     }}
-    """
-    )
+    """)
     schema_validation_engine = SchemavalidationEngine(not_null_constraint_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
@@ -449,8 +445,7 @@ def test_nullable_false_schemavalidation_single_check_failure(spark):
     tablename = "temp_null_false_data_table_failure"
     df = spark.createDataFrame(incomingnullable_data, colnames)
     df.createOrReplaceTempView(tablename)
-    not_null_constraint_config = ConfigFactory.parse_string(
-        f"""
+    not_null_constraint_config = ConfigFactory.parse_string(f"""
     {{
         name = "schemavalidation with not null values and not null enabled constraint for success"
         engine = schemavalidation
@@ -460,8 +455,7 @@ def test_nullable_false_schemavalidation_single_check_failure(spark):
             not_null_columns = {json.dumps(colnames, indent=2)}
         }}
     }}
-    """
-    )
+    """)
     print(str(not_null_constraint_config))
     schema_validation_engine = SchemavalidationEngine(not_null_constraint_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)

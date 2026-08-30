@@ -61,8 +61,7 @@ def process_schemavalidation_failure(spark, df, config):
 
 
 def test_unique_constraint_single_key_single_check_mode_success(spark):
-    schema_config = ConfigFactory.parse_string(
-        """{
+    schema_config = ConfigFactory.parse_string("""{
         name = "schemavalidation for varchartype10_failure"
         engine = schemavalidation
         single_check_mode = True
@@ -71,8 +70,7 @@ def test_unique_constraint_single_key_single_check_mode_success(spark):
             table = temp_data_table
             unique_constraints=[[name]]
         }
-    }"""
-    )
+    }""")
     data = [
         ("John", 25, "2021-01-01"),
         ("Doe", 30, "2021-01-02"),
@@ -92,8 +90,7 @@ def test_unique_constraint_single_key_single_check_mode_success(spark):
 
 
 def test_unique_constraint_single_key_single_check_mode_failure(spark):
-    schema_config = ConfigFactory.parse_string(
-        """{
+    schema_config = ConfigFactory.parse_string("""{
         name = "schemavalidation for varchartype10_failure"
         engine = schemavalidation
         single_check_mode = True
@@ -102,8 +99,7 @@ def test_unique_constraint_single_key_single_check_mode_failure(spark):
             table = temp_data_table
             unique_constraints=[[age]]
         }
-    }"""
-    )
+    }""")
     data = [
         ("John", 25, "2021-01-01"),
         ("Doe", 30, "2021-01-02"),
@@ -123,8 +119,7 @@ def test_unique_constraint_single_key_single_check_mode_failure(spark):
 
 
 def test_unique_constraint_composite_key_single_check_mode_success(spark):
-    schema_config = ConfigFactory.parse_string(
-        """{
+    schema_config = ConfigFactory.parse_string("""{
         name = "schemavalidation for varchartype10_failure"
         engine = schemavalidation
         single_check_mode = True
@@ -133,8 +128,7 @@ def test_unique_constraint_composite_key_single_check_mode_success(spark):
             table = temp_data_table
             unique_constraints=[[name,age]]
         }
-    }"""
-    )
+    }""")
     data = [
         ("John", 25, "2021-01-01"),
         ("Doe", 30, "2021-01-02"),
@@ -154,8 +148,7 @@ def test_unique_constraint_composite_key_single_check_mode_success(spark):
 
 
 def test_unique_constraint_composite_key_single_check_mode_failure(spark):
-    schema_config = ConfigFactory.parse_string(
-        """{
+    schema_config = ConfigFactory.parse_string("""{
         name = "schemavalidation for varchartype10_failure"
         engine = schemavalidation
         single_check_mode = True
@@ -164,8 +157,7 @@ def test_unique_constraint_composite_key_single_check_mode_failure(spark):
             table = temp_data_table
             unique_constraints=[[age,signup_date]]
         }
-    }"""
-    )
+    }""")
     data = [
         ("John", 25, "2021-01-01"),
         ("Doe", 30, "2021-01-02"),
@@ -185,8 +177,7 @@ def test_unique_constraint_composite_key_single_check_mode_failure(spark):
 
 
 def test_unique_constraint_single_key_multiple_check_mode_success(spark):
-    schema_config = ConfigFactory.parse_string(
-        """{
+    schema_config = ConfigFactory.parse_string("""{
         name = "schemavalidation for varchartype10_failure"
         engine = schemavalidation
         single_check_mode = True
@@ -195,8 +186,7 @@ def test_unique_constraint_single_key_multiple_check_mode_success(spark):
             table = temp_data_table
             unique_constraints=[[name]]
         }
-    }"""
-    )
+    }""")
     data = [
         ("John", 25, "2021-01-01"),
         ("Doe", 30, "2021-01-02"),
@@ -216,8 +206,7 @@ def test_unique_constraint_single_key_multiple_check_mode_success(spark):
 
 
 def test_unique_constraint_single_key_multiple_check_mode_failure(spark):
-    schema_config = ConfigFactory.parse_string(
-        """{
+    schema_config = ConfigFactory.parse_string("""{
         name = "schemavalidation for varchartype10_failure"
         engine = schemavalidation
         single_check_mode = True
@@ -226,8 +215,7 @@ def test_unique_constraint_single_key_multiple_check_mode_failure(spark):
             table = temp_data_table
             unique_constraints=[[age]]
         }
-    }"""
-    )
+    }""")
     data = [
         ("John", 25, "2021-01-01"),
         ("Doe", 30, "2021-01-02"),
@@ -247,8 +235,7 @@ def test_unique_constraint_single_key_multiple_check_mode_failure(spark):
 
 
 def test_unique_constraint_composite_key_multiple_check_mode_success(spark):
-    schema_config = ConfigFactory.parse_string(
-        """{
+    schema_config = ConfigFactory.parse_string("""{
         name = "schemavalidation for varchartype10_failure"
         engine = schemavalidation
         single_check_mode = True
@@ -257,8 +244,7 @@ def test_unique_constraint_composite_key_multiple_check_mode_success(spark):
             table = temp_data_table
             unique_constraints=[[name,age]]
         }
-    }"""
-    )
+    }""")
     data = [
         ("John", 25, "2021-01-01"),
         ("Doe", 30, "2021-01-02"),
@@ -278,8 +264,7 @@ def test_unique_constraint_composite_key_multiple_check_mode_success(spark):
 
 
 def test_unique_constraint_composite_key_multiple_check_mode_failure(spark):
-    schema_config = ConfigFactory.parse_string(
-        """{
+    schema_config = ConfigFactory.parse_string("""{
         name = "schemavalidation for varchartype10_failure"
         engine = schemavalidation
         single_check_mode = True
@@ -288,8 +273,7 @@ def test_unique_constraint_composite_key_multiple_check_mode_failure(spark):
             table = temp_data_table
             unique_constraints=[[age,signup_date]]
         }
-    }"""
-    )
+    }""")
     data = [
         ("John", 25, "2021-01-01"),
         ("Doe", 30, "2021-01-02"),

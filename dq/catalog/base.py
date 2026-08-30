@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Abstract base class for catalog providers."""
+
 from abc import ABC, abstractmethod
 import logging
 

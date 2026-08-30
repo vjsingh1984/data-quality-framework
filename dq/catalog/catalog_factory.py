@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Factory for creating catalog provider instances."""
+
 import logging
 
 from dq.catalog.base import CatalogProvider

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Catalog utility functions for resolving table references."""
+
 import logging
 
 from dq.catalog.catalog_factory import CatalogFactory

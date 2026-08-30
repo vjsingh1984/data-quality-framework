@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Command-line interface for Data Quality Framework."""
+
 import argparse
 import sys
 import logging

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Configuration loading and conversion utilities."""
+
 from typing import Any, Dict, List, Optional, Union
 
 from pyhocon import ConfigTree

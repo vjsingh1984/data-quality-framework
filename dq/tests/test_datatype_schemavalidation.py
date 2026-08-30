@@ -44,8 +44,7 @@ def test_schemavalidation_single_check_mode_true_stringtype_with_yyyymmdd_withou
     )
     df = spark.createDataFrame(data=data, schema=schema)
     df.createOrReplaceTempView("temp_data_table")
-    schema_config = ConfigFactory.parse_string(
-        """
+    schema_config = ConfigFactory.parse_string("""
     {
         name="SchemaValidation for StringType with YYYYMMDD without override"
         engine = schemavalidation
@@ -55,8 +54,7 @@ def test_schemavalidation_single_check_mode_true_stringtype_with_yyyymmdd_withou
             table = temp_data_table
         }
     }
-    """
-    )
+    """)
     # Apply Schema Validation including multi-column unique and foreign key constraints
     schema_validation_engine = SchemavalidationEngine(schema_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
@@ -88,8 +86,7 @@ def test_schemavalidation_single_check_mode_true_stringtype_with_yyyymmdd_with_o
     )
     df = spark.createDataFrame(data=data, schema=schema)
     df.createOrReplaceTempView("temp_data_table")
-    schema_config = ConfigFactory.parse_string(
-        """
+    schema_config = ConfigFactory.parse_string("""
     {
         name="SchemaValidation for StringType with YYYYMMDD and Override with replace true(default)"
         engine = schemavalidation
@@ -105,8 +102,7 @@ def test_schemavalidation_single_check_mode_true_stringtype_with_yyyymmdd_with_o
             ]
         }
     }
-    """
-    )
+    """)
     # Apply Schema Validation including multi-column unique and foreign key constraints
     schema_validation_engine = SchemavalidationEngine(schema_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
@@ -136,8 +132,7 @@ def test_schemavalidation_single_check_mode_true_stringtype_with_yyyymmdd_with_o
     )
     df = spark.createDataFrame(data=data, schema=schema)
     df.createOrReplaceTempView("temp_data_table")
-    schema_config = ConfigFactory.parse_string(
-        """
+    schema_config = ConfigFactory.parse_string("""
     {
         name="SchemaValidation for StringType with YYYYMMDD and Override with replace true(default)"
         engine = schemavalidation
@@ -153,8 +148,7 @@ def test_schemavalidation_single_check_mode_true_stringtype_with_yyyymmdd_with_o
             ]
         }
     }
-    """
-    )
+    """)
     # Apply Schema Validation including multi-column unique and foreign key constraints
     schema_validation_engine = SchemavalidationEngine(schema_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
@@ -178,8 +172,7 @@ def test_schemavalidation_single_check_mode_true_varchartype10_success(spark):
     df = spark.createDataFrame(data=data, schema=data_schema)
     df = df.withColumn("name", expr("CAST( name as VARCHAR(10))"))
     df.createOrReplaceTempView("temp_data_table")
-    scemavalidation_config = ConfigFactory.parse_string(
-        """
+    scemavalidation_config = ConfigFactory.parse_string("""
     {
         name = "schemavalidation for varchartype10_success"
         engine = schemavalidation
@@ -189,8 +182,7 @@ def test_schemavalidation_single_check_mode_true_varchartype10_success(spark):
             table = "temp_data_table"
         }
     }
-    """
-    )
+    """)
     schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
@@ -217,8 +209,7 @@ def test_schemavalidation_single_check_mode_true_shortType_success(spark):
     df = spark.createDataFrame(data=data, schema=data_schema)
     df.createOrReplaceTempView("temp_data_table")
     df.withColumn("age", expr("CAST(age as SHORT)"))
-    scemavalidation_config = ConfigFactory.parse_string(
-        """
+    scemavalidation_config = ConfigFactory.parse_string("""
     {
         name = "schemavalidation for varchartype10_failure"
         engine = schemavalidation
@@ -228,8 +219,7 @@ def test_schemavalidation_single_check_mode_true_shortType_success(spark):
             table = "temp_data_table"
         }
     }
-    """
-    )
+    """)
     schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
@@ -253,8 +243,7 @@ def test_schemavalidation_single_check_mode_true_chartype10_success(spark):
     df = df.withColumn("name", expr("CAST( name as CHAR(10))"))
 
     df.createOrReplaceTempView("temp_data_table")
-    scemavalidation_config = ConfigFactory.parse_string(
-        """
+    scemavalidation_config = ConfigFactory.parse_string("""
     {
         name = "schemavalidation for chartype10_success"
         engine = schemavalidation
@@ -264,8 +253,7 @@ def test_schemavalidation_single_check_mode_true_chartype10_success(spark):
             table = "temp_data_table"
         }
     }
-    """
-    )
+    """)
     schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
@@ -293,8 +281,7 @@ def test_schemavalidation_single_check_mode_true_booleanType_success(spark):
     df = df.withColumn("name", expr("CAST( name as CHAR(10))"))
 
     df.createOrReplaceTempView("temp_data_table")
-    scemavalidation_config = ConfigFactory.parse_string(
-        """
+    scemavalidation_config = ConfigFactory.parse_string("""
     {
         name = "schemavalidation for chartype10_failure"
         engine = schemavalidation
@@ -304,8 +291,7 @@ def test_schemavalidation_single_check_mode_true_booleanType_success(spark):
             table = "temp_data_table"
         }
     }
-    """
-    )
+    """)
     schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
@@ -334,8 +320,7 @@ def test_schemavalidation_single_check_mode_false_stringtype_with_yyyymmdd_witho
     )
     df = spark.createDataFrame(data=data, schema=schema)
     df.createOrReplaceTempView("temp_data_table")
-    schema_config = ConfigFactory.parse_string(
-        """
+    schema_config = ConfigFactory.parse_string("""
     {
         name="SchemaValidation for StringType with YYYYMMDD without override"
         engine = schemavalidation
@@ -345,8 +330,7 @@ def test_schemavalidation_single_check_mode_false_stringtype_with_yyyymmdd_witho
             table = temp_data_table
         }
     }
-    """
-    )
+    """)
     # Apply Schema Validation including multi-column unique and foreign key constraints
     schema_validation_engine = SchemavalidationEngine(schema_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
@@ -378,8 +362,7 @@ def test_schemavalidation_single_check_mode_false_stringtype_with_yyyymmdd_with_
     )
     df = spark.createDataFrame(data=data, schema=schema)
     df.createOrReplaceTempView("temp_data_table")
-    schema_config = ConfigFactory.parse_string(
-        """
+    schema_config = ConfigFactory.parse_string("""
     {
         name="SchemaValidation for StringType with YYYYMMDD and Override with replace true(default)"
         engine = schemavalidation
@@ -394,8 +377,7 @@ def test_schemavalidation_single_check_mode_false_stringtype_with_yyyymmdd_with_
             ]
         }
     }
-    """
-    )
+    """)
     # Apply Schema Validation including multi-column unique and foreign key constraints
     schema_validation_engine = SchemavalidationEngine(schema_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
@@ -425,8 +407,7 @@ def test_schemavalidation_single_check_mode_false_stringtype_with_yyyymmdd_with_
     )
     df = spark.createDataFrame(data=data, schema=schema)
     df.createOrReplaceTempView("temp_data_table")
-    schema_config = ConfigFactory.parse_string(
-        """
+    schema_config = ConfigFactory.parse_string("""
     {
         name="SchemaValidation for StringType with YYYYMMDD and Override with replace true(default)"
         engine = schemavalidation
@@ -442,8 +423,7 @@ def test_schemavalidation_single_check_mode_false_stringtype_with_yyyymmdd_with_
             ]
         }
     }
-    """
-    )
+    """)
     # Apply Schema Validation including multi-column unique and foreign key constraints
     schema_validation_engine = SchemavalidationEngine(schema_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
@@ -467,8 +447,7 @@ def test_schemavalidation_single_check_mode_false_varchartype10_success(spark):
     df = spark.createDataFrame(data=data, schema=data_schema)
     df = df.withColumn("name", expr("CAST( name as VARCHAR(10))"))
     df.createOrReplaceTempView("temp_data_table")
-    scemavalidation_config = ConfigFactory.parse_string(
-        """
+    scemavalidation_config = ConfigFactory.parse_string("""
     {
         name = "schemavalidation for varchartype10_success"
         engine = schemavalidation
@@ -478,8 +457,7 @@ def test_schemavalidation_single_check_mode_false_varchartype10_success(spark):
             table = "temp_data_table"
         }
     }
-    """
-    )
+    """)
     schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
@@ -506,8 +484,7 @@ def test_schemavalidation_single_check_mode_false_shortType_success(spark):
     df = spark.createDataFrame(data=data, schema=data_schema)
     df.createOrReplaceTempView("temp_data_table")
     df.withColumn("age", expr("CAST(age as SHORT)"))
-    scemavalidation_config = ConfigFactory.parse_string(
-        """
+    scemavalidation_config = ConfigFactory.parse_string("""
     {
         name = "schemavalidation for varchartype10_failure"
         engine = schemavalidation
@@ -517,8 +494,7 @@ def test_schemavalidation_single_check_mode_false_shortType_success(spark):
             table = "temp_data_table"
         }
     }
-    """
-    )
+    """)
     schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
@@ -542,8 +518,7 @@ def test_schemavalidation_single_check_mode_false_chartype10_success(spark):
     df = df.withColumn("name", expr("CAST( name as CHAR(10))"))
 
     df.createOrReplaceTempView("temp_data_table")
-    scemavalidation_config = ConfigFactory.parse_string(
-        """
+    scemavalidation_config = ConfigFactory.parse_string("""
     {
         name = "schemavalidation for chartype10_success"
         engine = schemavalidation
@@ -553,8 +528,7 @@ def test_schemavalidation_single_check_mode_false_chartype10_success(spark):
             table = "temp_data_table"
         }
     }
-    """
-    )
+    """)
     schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
@@ -582,8 +556,7 @@ def test_schemavalidation_single_check_mode_false_booleanType_success(spark):
     df = df.withColumn("name", expr("CAST( name as CHAR(10))"))
 
     df.createOrReplaceTempView("temp_data_table")
-    scemavalidation_config = ConfigFactory.parse_string(
-        """
+    scemavalidation_config = ConfigFactory.parse_string("""
     {
         name = "schemavalidation for chartype10_failure"
         engine = schemavalidation
@@ -593,8 +566,7 @@ def test_schemavalidation_single_check_mode_false_booleanType_success(spark):
             table = "temp_data_table"
         }
     }
-    """
-    )
+    """)
     schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
     summarymetrics = schema_validation_engine.apply(df, repository=None)
     overallsuccess = True
