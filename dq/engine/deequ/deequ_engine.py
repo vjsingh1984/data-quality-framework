@@ -1,17 +1,21 @@
 # Copyright 2024 Data Quality Framework Contributors
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 import logging
-from typing import Optional, List, Dict, Any
+import warnings
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from pyhocon import ConfigTree
-from pyspark.sql import DataFrame
-from pydeequ.verification import VerificationSuite, VerificationResult
-from pydeequ.repository import FileSystemMetricsRepository, ResultKey
 
-from dq.engine.dq_engine import DQEngine
 from dq.engine.deequ.deequ_check import DeequCheck
-from dq.utils import repository_utils, constants
+from dq.engine.dq_engine import DQEngine
+from dq.exceptions import ConfigurationError
+from dq.utils import constants, repository_utils
+
+if TYPE_CHECKING:
+    from pyspark.sql import DataFrame
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +29,28 @@ class DeequEngine(DQEngine):
     (one ``Check`` per constraint).
     """
 
-    def __init__(self, config: ConfigTree, dqts: Optional[int] = None):
-        self._sparkSession = None
-        super().__init__(config, dqts)
+    def __init__(self, config: ConfigTree):
+        self._spark_session: Any = None  # Will be set to SparkSession in apply()
+        super().__init__(config)
+
+    def _validate_config(self) -> None:
+        """Validate Deequ configuration at init time."""
+        checks = self._config.get("checks", [])
+        if not checks:
+            raise ConfigurationError(
+                "DeequEngine requires 'checks' in configuration with at least one check."
+            )
+
+        for i, check in enumerate(checks):
+            try:
+                constraint = check.get("constraint")
+            except Exception:
+                constraint = None
+
+            if not constraint:
+                raise ConfigurationError(
+                    f"Check at index {i} is missing required 'constraint' key."
+                )
 
     def apply(self, dataframe: DataFrame, repository=None) -> List[Dict[str, Any]]:
         """Run Deequ verification checks against the DataFrame.
@@ -35,26 +58,36 @@ class DeequEngine(DQEngine):
         Args:
             dataframe: Spark DataFrame to validate.
             repository: Optional repository config for persisting metrics.
+                Deprecated: Use ``repository_writer`` in constructor instead.
 
         Returns:
             List of metric dicts with ``check``, ``success``, ``details`` keys.
         """
+        if repository is not None:
+            warnings.warn(
+                "The 'repository' parameter is deprecated. "
+                "Use 'repository_writer' in the engine constructor instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         rule_name = self._config.get(constants.DQ_RULE_NAME, "Unknown")
         engine_name = self._config.get(constants.DQ_ENGINE_NAME, "Unknown")
         logger.info("Processing %s with %s Engine", rule_name, engine_name)
+
+        from pydeequ.verification import VerificationResult, VerificationSuite
 
         deequ_check = DeequCheck(
             checks_config=self._config.get("checks", []),
             single_check_mode=self._config.get(constants.DQ_SINGLE_CHECK_MODE, False),
         )
-        self._sparkSession = dataframe.sparkSession
+        self._spark_session = dataframe.sparkSession
 
         verification_run_builder = VerificationSuite(
-            spark_session=self._sparkSession
+            spark_session=self._spark_session
         ).onData(df=dataframe)
 
         verification_run_builder = deequ_check.apply_checks(
-            verification_run_builder, self._sparkSession
+            verification_run_builder, self._spark_session
         )
 
         verification_result = verification_run_builder.run()
@@ -64,32 +97,44 @@ class DeequEngine(DQEngine):
         else:
             logger.warning("Data quality checks failed.")
 
-        successMetrics = VerificationResult.successMetricsAsDataFrame(
-            spark_session=self._sparkSession,
+        success_metrics = VerificationResult.successMetricsAsDataFrame(
+            spark_session=self._spark_session,
             verificationResult=verification_result,
         )
-        checkVerifications = VerificationResult.checkResultsAsDataFrame(
-            spark_session=self._sparkSession,
+        check_verifications = VerificationResult.checkResultsAsDataFrame(
+            spark_session=self._spark_session,
             verificationResult=verification_result,
         )
 
         if repository:
-            current_milli_time = ResultKey.current_milli_time()
+            from pydeequ.repository import ResultKey
+
+            current_timestamp_ms = ResultKey.current_milli_time()
             repository_utils.save_to_repository(
-                repository, successMetrics,
-                constants.DQ_REPOSITORY_METRICS, current_milli_time,
+                repository,
+                success_metrics,
+                constants.DQ_REPOSITORY_METRICS,
+                current_timestamp_ms,
             )
             repository_utils.save_to_repository(
-                repository, checkVerifications,
-                constants.DQ_REPOSITORY_VERIFICATIONS, current_milli_time,
+                repository,
+                check_verifications,
+                constants.DQ_REPOSITORY_VERIFICATIONS,
+                current_timestamp_ms,
             )
 
-        summarymetrics = []
-        for check in checkVerifications.collect():
-            summarymetrics.append({
-                "check": check["check"],
-                "success": check["check_status"] == "Success",
-                "details": check,
-            })
+        summary_metrics = []
+        for check in check_verifications.collect():
+            check_name = check["check"]
+            # Extract constraint from check name (e.g., "Completeness for column_x" -> "Completeness")
+            constraint = check_name.split(" ")[0] if " " in check_name else check_name
 
-        return summarymetrics
+            metric = self._create_metric(
+                check=check_name,
+                success=check["check_status"] == "Success",
+                details=check,
+                constraint=constraint,
+            )
+            summary_metrics.append(metric.to_dict())
+
+        return summary_metrics

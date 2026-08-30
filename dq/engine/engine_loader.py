@@ -3,11 +3,16 @@
 
 #!/usr/bin/env python
 """Dynamic engine loader for the Data Quality Framework."""
-import importlib
-import re
-import logging
+from __future__ import annotations
 
-from dq.engine.dq_engine import DQEngine
+import logging
+import re
+from typing import TYPE_CHECKING
+
+from dq.engine.engine_registry import EngineRegistry
+
+if TYPE_CHECKING:
+    from dq.engine.dq_engine import DQEngine
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +21,12 @@ _ENGINE_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 
 
 class EngineLoader:
-    """Loads engine classes dynamically using Python's importlib.
+    """Loads engine classes dynamically using the EngineRegistry.
 
-    Engine modules are expected at ``dq.engine.{name}.{name}_engine``
-    with a class named ``{Name}Engine`` (first letter capitalised).
+    The registry supports three discovery methods:
+    1. Explicit registration via ``EngineRegistry.register()``
+    2. Convention-based: ``dq.engine.{name}.{name}_engine``
+    3. Entry points: ``dq.engines`` group
     """
 
     def load_engine(self, engine_name: str, *args, **kwargs) -> DQEngine:
@@ -47,22 +54,8 @@ class EngineLoader:
             )
 
         try:
-            module = importlib.import_module(
-                f"dq.engine.{name}.{name}_engine"
-            )
-            class_name = f"{name.capitalize()}Engine"
-            engine_class = getattr(module, class_name)
-
-            logger.debug("Loaded engine %s from %s", class_name, module.__name__)
+            engine_class = EngineRegistry.get_engine_class(name)
+            logger.debug("Loaded engine %s", engine_class.__name__)
             return engine_class(*args, **kwargs)
-
-        except ModuleNotFoundError as e:
-            raise ImportError(
-                f"Engine module '{name}_engine' not found: {e}"
-            ) from e
-
-        except AttributeError as e:
-            raise AttributeError(
-                f"Engine class '{class_name}' not found in module "
-                f"'{name}_engine': {e}"
-            ) from e
+        except ImportError as e:
+            raise ImportError(f"Engine module for '{name}' not found: {e}") from e

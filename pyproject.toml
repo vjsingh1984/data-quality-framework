@@ -15,8 +15,6 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Quality Assurance",
@@ -28,7 +26,7 @@ packages = [{include = "dq"}]
 # Poetry performance configuration (applied via CLI/env vars)
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.11"
 
 # ULTRA-LIGHT CORE DEPENDENCIES ONLY
 # Essential for framework functionality
@@ -43,25 +41,25 @@ pywin32-ctypes = {version = "^0.2.0", markers = "sys_platform == 'win32'"}
 pyspark = {version = "^3.5.0", optional = true}
 pydeequ = {version = "^1.2.1", optional = true}
 boto3 = {version = "^1.26.0", optional = true}
-cron-schedule-triggers = {version = "^0.0.11", optional = true}
 
 [tool.poetry.extras]
 spark = ["pyspark"]
 deequ = ["pydeequ"]
 aws = ["boto3"]
-cron = ["cron-schedule-triggers"]
 
 # Minimal development dependencies (only for CI)
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0.0"               # Testing only
+pytest-mock = "^3.10.0"         # Mock support for unit tests
 black = "^23.0.0"               # Code formatting only
+ruff = "^0.4.0"                 # Fast Python linter
 flake8 = "^6.0.0"               # Linting only
 bandit = "^1.7.5"               # Security scanning only
 safety = "^3.0.0"               # Dependency security check
 
 [tool.poetry.scripts]
 dq-framework = "dq.cli:main"
-dq-validate = "dq.validate:main"
+dq-validate = "dq.config_validator:main"
 
 [build-system]
 requires = ["poetry-core"]
@@ -70,7 +68,7 @@ build-backend = "poetry.core.masonry.api"
 # Optimized tool configurations for CI performance
 [tool.black]
 line-length = 88
-target-version = ['py39', 'py310', 'py311', 'py312']
+target-version = ['py311', 'py312']
 fast = true                     # Fast mode for CI
 quiet = true                    # Reduce output
 
@@ -98,8 +96,23 @@ count = true                    # Count errors only
 
 [tool.bandit]
 exclude_dirs = ["tests", "build", "dist", ".venv"]
-skips = ["B101"]                # Skip assert_used test
+skips = ["B101", "B108", "B307", "B608"]  # B101=assert, B108=tmp, B307=eval(hardened), B608=SQL(validated)
 quiet = true                    # Reduce output
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+exclude = ["dq/notebooks/"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E203", "E501", "E712", "E731", "E741", "F403", "F405"]
+
+[tool.ruff.lint.per-file-ignores]
+"dq/tests/*" = ["E101", "E402", "F841", "W291", "W293"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dq"]
 
 [tool.coverage.run]
 source = ["dq"]

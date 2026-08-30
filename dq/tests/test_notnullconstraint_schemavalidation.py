@@ -1,68 +1,61 @@
 # Copyright 2024 Data Quality Framework Contributors
 # SPDX-License-Identifier: Apache-2.0
 
+"""Tests for NOT NULL constraint validation in schema validation."""
+
 import pytest
-from pyhocon import ConfigFactory
-from dq.engine.schemavalidation.schemavalidation_engine import SchemavalidationEngine
-import json
-from pyspark.sql.types import StructType, StringType, LongType,  StructField
+from pyspark.sql.types import LongType, StringType, StructField, StructType
 
-def test_schemavalidation_with_nullvalue_and_disabled_notnull_success(spark):
+from dq.tests.test_helpers import (
+    apply_schema_validation,
+    assert_all_metrics_success,
+    create_schema_config,
+)
+
+
+@pytest.mark.spark
+def test_schemavalidation_with_nullvalue_and_nullable_columns_success(spark):
+    """Test schema validation succeeds when nullable columns contain null values."""
     data = [("John", 25, "2021-01-01"), ("Doe", None, "2021-01-02"), ("Jane", 40, None)]
-    data_schema = StructType([
-        StructField("name",         StringType(),   False),
-        StructField("age",          LongType(),     True),
-        StructField("signup_date",  StringType(),   True)
-    ])
-    df = spark.createDataFrame(data = data, schema = data_schema)
-    df.createOrReplaceTempView("temp_data_table")
-    scemavalidation_config = ConfigFactory.parse_string("""
-    {
-        name = "schemavalidation with null values and not null enabled constraint for receving failure"
-        engine = schemavalidation
-        single_check_mode = True
-        schema = {
-            catalog_type = spark
-            table = "temp_data_table"
-        }
-    }
-    """)
-    schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
-    summarymetrics = schema_validation_engine.apply(df, repository = None)
-    overallsuccess = True
-    for metric in summarymetrics:
-         if not(metric['success']):
-            print("Error in : " + json.dumps(metric))
-            overallsuccess = False
-    
-    assert True == overallsuccess
+    data_schema = StructType(
+        [
+            StructField("name", StringType(), False),
+            StructField("age", LongType(), True),
+            StructField("signup_date", StringType(), True),
+        ]
+    )
+    df = spark.createDataFrame(data=data, schema=data_schema)
 
-def test_schemavalidation_without_nullvalue_and_enabled_notnull_success(spark):
-    data = [("John", 25, "2021-01-01"), ("Doe", 30, "2021-01-02"), ("Jane", 40, "2024-05-05")]
-    data_schema = StructType([
-        StructField("name",         StringType(),   False),
-        StructField("age",          LongType(),     False),
-        StructField("signup_date",  StringType(),   False)
-    ])
-    df = spark.createDataFrame(data = data, schema = data_schema)
-    df.createOrReplaceTempView("temp_data_table")
-    scemavalidation_config = ConfigFactory.parse_string("""
-    {
-        name = "schemavalidation with null values and not null enabled constraint for receving failure"
-        engine = schemavalidation
-        single_check_mode = True
-        schema = {
-            catalog_type = spark
-            table = "temp_data_table"
-        }
-    }
-    """)
-    schema_validation_engine = SchemavalidationEngine(scemavalidation_config)
-    summarymetrics = schema_validation_engine.apply(df, repository = None)
-    overallsuccess = True
-    for metric in summarymetrics:
-         if not(metric['success']):
-            print("Error in : " + json.dumps(metric))
-            overallsuccess = False
-    
-    assert True == overallsuccess
+    config_str = create_schema_config(
+        name="null values in nullable columns",
+        single_check_mode=True,
+    )
+    metrics = apply_schema_validation(spark, df, config_str)
+
+    assert_all_metrics_success(metrics)
+
+
+@pytest.mark.spark
+def test_schemavalidation_without_nullvalue_and_non_nullable_columns_success(spark):
+    """Test schema validation succeeds when non-nullable columns contain no null values."""
+    data = [
+        ("John", 25, "2021-01-01"),
+        ("Doe", 30, "2021-01-02"),
+        ("Jane", 40, "2024-05-05"),
+    ]
+    data_schema = StructType(
+        [
+            StructField("name", StringType(), False),
+            StructField("age", LongType(), False),
+            StructField("signup_date", StringType(), False),
+        ]
+    )
+    df = spark.createDataFrame(data=data, schema=data_schema)
+
+    config_str = create_schema_config(
+        name="no null values in non-nullable columns",
+        single_check_mode=True,
+    )
+    metrics = apply_schema_validation(spark, df, config_str)
+
+    assert_all_metrics_success(metrics)

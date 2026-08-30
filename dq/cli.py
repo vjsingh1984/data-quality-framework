@@ -3,12 +3,11 @@
 
 """Command-line interface for Data Quality Framework."""
 import argparse
-import sys
 import logging
+import sys
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -23,26 +22,24 @@ Examples:
   dq-framework config.conf
   dq-framework file://path/to/config.conf
   dq-framework s3://bucket/path/to/config.conf --spark-master spark://host:7077
-        """
+        """,
     )
     parser.add_argument(
         "config",
-        help="Path to HOCON configuration file (supports file://, s3://, abfss://, http://)"
+        help="Path to HOCON configuration file (supports file://, s3://, abfss://, http://)",
     )
     parser.add_argument(
         "--spark-master",
-        default="local[*]",
-        help="Spark master URL (default: local[*])"
+        default=None,
+        help="Spark master URL (default: auto-detect or local[*])",
     )
     parser.add_argument(
         "--app-name",
         default="dq-framework",
-        help="Spark application name (default: dq-framework)"
+        help="Spark application name (default: dq-framework)",
     )
     parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
     )
 
     args = parser.parse_args()
@@ -51,50 +48,38 @@ Examples:
         logging.getLogger().setLevel(logging.DEBUG)
 
     try:
-        from pyspark.sql import SparkSession
         from dq.dq_framework import DQFramework
+        from dq.formatters import format_summary
+        from dq.platform.spark_session_builder import build_spark_session
 
-        logger.info(f"Initializing Spark session with master: {args.spark_master}")
-        spark = SparkSession.builder \
-            .master(args.spark_master) \
-            .appName(args.app_name) \
-            .getOrCreate()
+        logger.info("Initializing Spark session...")
+        spark = build_spark_session(
+            app_name=args.app_name,
+            master=args.spark_master,
+        )
 
-        logger.info(f"Loading configuration from: {args.config}")
+        logger.info("Loading configuration from: %s", args.config)
         framework = DQFramework(spark, args.config)
 
         logger.info("Running data quality checks...")
         results = framework.run()
 
-        # Print results summary
-        passed = sum(1 for r in results if r.get("success", False))
-        failed = len(results) - passed
+        print(format_summary(results))
 
-        print(f"\n{'='*60}")
-        print(f"Data Quality Check Results")
-        print(f"{'='*60}")
-        print(f"Total checks: {len(results)}")
-        print(f"Passed: {passed}")
-        print(f"Failed: {failed}")
-        print(f"{'='*60}\n")
-
-        if failed > 0:
-            print("Failed checks:")
-            for result in results:
-                if not result.get("success", False):
-                    print(f"  - {result.get('check', 'Unknown')}")
-            return 1
-
-        return 0
+        failed = sum(1 for r in results if not r.get("success", False))
+        return 1 if failed > 0 else 0
 
     except ImportError as e:
-        logger.error(f"Missing dependency: {e}")
-        logger.error("Install Spark support with: pip install data-quality-framework[spark]")
+        logger.error("Missing dependency: %s", e)
+        logger.error(
+            "Install Spark support with: pip install data-quality-framework[spark]"
+        )
         return 1
     except Exception as e:
-        logger.error(f"Error running data quality checks: {e}")
+        logger.error("Error running data quality checks: %s", e)
         if args.verbose:
             import traceback
+
             traceback.print_exc()
         return 1
 

@@ -9,6 +9,30 @@ from dq.catalog.base import CatalogProvider
 logger = logging.getLogger(__name__)
 
 
+def _escape_identifier(name: str) -> str:
+    """Backtick-escape a potentially dotted SQL identifier.
+
+    Each dot-separated part is wrapped in backticks with any internal
+    backticks doubled, then the parts are rejoined with ``.``.
+
+    Example::
+
+        >>> _escape_identifier("catalog.schema.table")
+        '`catalog`.`schema`.`table`'
+        >>> _escape_identifier("my`cat.schema")
+        '`my``cat`.`schema`'
+
+    Args:
+        name: A plain or dot-qualified identifier.
+
+    Returns:
+        Escaped identifier safe for use in Spark SQL statements.
+    """
+    parts = name.split(".")
+    escaped = [f"`{part.replace('`', '``')}`" for part in parts]
+    return ".".join(escaped)
+
+
 class UnityCatalogProvider(CatalogProvider):
     """Catalog provider for Databricks Unity Catalog.
 
@@ -88,7 +112,7 @@ class UnityCatalogProvider(CatalogProvider):
         """
         full_name = self._resolve_table_name(table_reference, database, catalog)
         try:
-            self._spark.sql(f"DESCRIBE TABLE {full_name}")
+            self._spark.sql(f"DESCRIBE TABLE {_escape_identifier(full_name)}")
             return True
         except Exception as e:
             logger.debug("Table %s not found in Unity Catalog: %s", full_name, e)
@@ -104,7 +128,9 @@ class UnityCatalogProvider(CatalogProvider):
             List of schema names.
         """
         if catalog_name:
-            rows = self._spark.sql(f"SHOW SCHEMAS IN {catalog_name}").collect()
+            rows = self._spark.sql(
+                f"SHOW SCHEMAS IN {_escape_identifier(catalog_name)}"
+            ).collect()
         else:
             rows = self._spark.sql("SHOW SCHEMAS").collect()
         return [row[0] for row in rows]
@@ -120,7 +146,9 @@ class UnityCatalogProvider(CatalogProvider):
             List of table names.
         """
         full_schema = f"{catalog_name}.{schema_name}" if catalog_name else schema_name
-        rows = self._spark.sql(f"SHOW TABLES IN {full_schema}").collect()
+        rows = self._spark.sql(
+            f"SHOW TABLES IN {_escape_identifier(full_schema)}"
+        ).collect()
         return [row["tableName"] for row in rows]
 
     def set_current_catalog(self, catalog_name):
@@ -129,7 +157,7 @@ class UnityCatalogProvider(CatalogProvider):
         Args:
             catalog_name: Name of the catalog to activate.
         """
-        self._spark.sql(f"USE CATALOG {catalog_name}")
+        self._spark.sql(f"USE CATALOG {_escape_identifier(catalog_name)}")
         logger.info("Switched to Unity Catalog: %s", catalog_name)
 
     def _resolve_table_name(self, table_reference, database=None, catalog=None):

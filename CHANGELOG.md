@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Open source release under Apache 2.0 license
-- GitHub Actions CI/CD (lint, test matrix across Python 3.9-3.12, build, release)
+- GitHub Actions CI/CD (lint, unit tests, Spark integration tests across Python 3.11-3.12, build, release)
 - Pluggable catalog system with auto-detection (Spark, Hive, Unity Catalog, AWS Glue)
 - CLI entry points: `dq-framework` and `dq-validate`
 - Custom exceptions hierarchy (`DQFrameworkError` and subclasses)

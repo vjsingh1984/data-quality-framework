@@ -9,8 +9,9 @@ from dq.catalog.catalog_factory import CatalogFactory
 logger = logging.getLogger(__name__)
 
 
-def get_from_catalog(spark, dataframe_name, catalog_type=None, database=None,
-                     catalog=None, **kwargs):
+def get_from_catalog(
+    spark, dataframe_name, catalog_type=None, database=None, catalog=None, **kwargs
+):
     """Load a DataFrame from a catalog.
 
     Uses the CatalogFactory to resolve table references across different
@@ -32,8 +33,9 @@ def get_from_catalog(spark, dataframe_name, catalog_type=None, database=None,
     return provider.get_dataframe(dataframe_name, database=database, catalog=catalog)
 
 
-def get_table_schema(spark, table_name, catalog_type=None, database=None,
-                     catalog=None, **kwargs):
+def get_table_schema(
+    spark, table_name, catalog_type=None, database=None, catalog=None, **kwargs
+):
     """Fetch table schema from a catalog.
 
     Args:
@@ -51,8 +53,9 @@ def get_table_schema(spark, table_name, catalog_type=None, database=None,
     return provider.get_table_schema(table_name, database=database, catalog=catalog)
 
 
-def table_exists(spark, table_name, catalog_type=None, database=None,
-                 catalog=None, **kwargs):
+def table_exists(
+    spark, table_name, catalog_type=None, database=None, catalog=None, **kwargs
+):
     """Check if a table exists in a catalog.
 
     Args:

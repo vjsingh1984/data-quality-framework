@@ -1,47 +1,53 @@
 # Copyright 2024 Data Quality Framework Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-from pyspark.sql import functions as F
-import datetime
-from pydeequ.repository import ResultKey
+import os
 
 
-def save_to_repository(repoconfig, df, metric_type_suffix, resultkey_current_time_to_millis):
+def save_to_repository(repo_config, dataframe, metric_type_suffix, result_timestamp_ms):
     """
-    Saves the repository configuration to a file.
+    Saves DataFrame to configured repository (file system or catalog).
 
     Args:
-        repoconfig (ConfigTree): The configuration object containing the repository settings.
-        df (pyspark.DataFrame): The DataFrame to be saved.
-        metric_type_suffix (str) : The metric type suffix to be added to the file name.
-        resultkey_current_time_to_millis (long): result key to tie verifications and metrics executed together
+        repo_config (ConfigTree): The configuration object containing repository settings.
+        dataframe (pyspark.DataFrame): The DataFrame to be saved.
+        metric_type_suffix (str): The metric type suffix to be added to the file/table name.
+        result_timestamp_ms (int): Result timestamp to tie verifications and metrics together.
 
     Returns:
         None
     """
-    partition_dataset = repoconfig.get("dataset", None)
-    if partition_dataset is None:
-        df.show(truncate=False)
-        raise ValueError("Dataset name is not provided in the configuration.")
-    
-    format = repoconfig.get("format", "delta")
-    file_repo_config = repoconfig.get("file", {})
+    from pyspark.sql import functions as F
 
-    if format not in ["parquet", "csv", "json", "delta", "orc", "json"]:
+    partition_dataset = repo_config.get("dataset", None)
+    if partition_dataset is None:
+        raise ValueError("Dataset name is not provided in the configuration.")
+
+    format = repo_config.get("format", "delta")
+    file_repo_config = repo_config.get("file", {})
+
+    if format not in ["parquet", "csv", "json", "delta", "orc"]:
         raise ValueError("Invalid format specified in the configuration.")
 
-    partition_year = F.year(F.from_unixtime(F.lit(resultkey_current_time_to_millis / 1000)))
-    nextdf = df.withColumn("dqts", F.lit(resultkey_current_time_to_millis)).withColumn("dataset", F.lit(
-        partition_dataset)).withColumn("year", F.lit(partition_year))
+    partition_year = F.year(F.from_unixtime(F.lit(result_timestamp_ms / 1000)))
+    enriched_dataframe = (
+        dataframe.withColumn("dqts", F.lit(result_timestamp_ms))
+        .withColumn("dataset", F.lit(partition_dataset))
+        .withColumn("year", F.lit(partition_year))
+    )
 
     if file_repo_config:
         paths = file_repo_config.get("paths", [])
         if paths:
             for path in paths:
                 # Save to file
-                nextdf.coalesce(1).write.mode("append").format(format).partitionBy("dataset","year").save(path + "/" + metric_type_suffix)
+                enriched_dataframe.coalesce(1).write.mode("append").format(
+                    format
+                ).partitionBy("dataset", "year").save(
+                    os.path.join(path, metric_type_suffix)
+                )
 
-    catalog_repo_config = repoconfig.get("catalog", {})
+    catalog_repo_config = repo_config.get("catalog", {})
     if catalog_repo_config:
         # Save to catalog
         tables_config = catalog_repo_config.get("tables", [])
@@ -51,11 +57,24 @@ def save_to_repository(repoconfig, df, metric_type_suffix, resultkey_current_tim
                 if table is None:
                     raise ValueError("Table name is not provided in the configuration.")
                 else:
-                    tablewithsuffix = table + "_" + metric_type_suffix
-                    dbname, tabname = tablewithsuffix.split(".")
-                    doesTableExistAlready =  df.sparkSession._jsparkSession.catalog().tableExists(dbname, tabname)
-                    if doesTableExistAlready:
-                        nextdf.coalesce(1).write.mode("append").format(format).option("mergeSchema", "true").insertInto(tablewithsuffix)
+                    table_with_suffix = table + "_" + metric_type_suffix
+                    parts = table_with_suffix.split(".")
+                    if len(parts) != 2:
+                        raise ValueError(
+                            f"Table reference '{table_with_suffix}' must be in "
+                            f"'database.table' format, got {len(parts)} part(s)."
+                        )
+                    database_name, table_name = parts
+                    table_exists = (
+                        dataframe.sparkSession._jsparkSession.catalog().tableExists(
+                            database_name, table_name
+                        )
+                    )
+                    if table_exists:
+                        enriched_dataframe.coalesce(1).write.mode("append").format(
+                            format
+                        ).option("mergeSchema", "true").insertInto(table_with_suffix)
                     else:
-                        nextdf.coalesce(1).write.mode("overwrite").format(format).saveAsTable(tablewithsuffix)
-
+                        enriched_dataframe.coalesce(1).write.mode("overwrite").format(
+                            format
+                        ).saveAsTable(table_with_suffix)

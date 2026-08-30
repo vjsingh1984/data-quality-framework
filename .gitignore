@@ -93,6 +93,20 @@ spark-warehouse/
 metastore_db/
 derby.log
 
+# Claude Code
+.claude/
+CLAUDE.md
+
+# Other AI Coding Assistants
+.cursor/
+.cursorrules
+AIDER.md
+.aider*
+.copilot/
+*continuum/
+.github/copilot-instructions.md
+.windsurfrules
+
 # Project specific
 *.jar
 bandit-report.json

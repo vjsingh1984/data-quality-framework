@@ -619,7 +619,7 @@ dqframework {
     },
     {
       name = "transaction_monitoring"
-      engine = "custom"
+      engine = "constraint"
       dataframes = ["transaction_data"]
       checks = [
         {

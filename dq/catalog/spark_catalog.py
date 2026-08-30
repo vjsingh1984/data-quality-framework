@@ -61,4 +61,7 @@ class SparkCatalogProvider(CatalogProvider):
         try:
             return self._spark._jsparkSession.catalog().tableExists(full_name)
         except Exception:
+            logger.debug(
+                "Error checking table existence for '%s'", full_name, exc_info=True
+            )
             return False
