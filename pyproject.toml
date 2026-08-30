@@ -55,7 +55,7 @@ cron = ["cron-schedule-triggers"]
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0.0"               # Testing only
 black = "^23.0.0"               # Code formatting only
-flake8 = "^6.0.0"               # Linting only
+flake8 = "^7.3.0"               # Linting only
 bandit = "^1.7.5"               # Security scanning only
 safety = "^3.0.0"               # Dependency security check
 
