@@ -48,7 +48,12 @@ jobs:
           distribution: temurin
           java-version: "11"
       - name: Install Poetry
-        run: pip install poetry==2.4.2
+        run: |
+          if [ "${{ matrix.python-version }}" = "3.9" ]; then
+            pip install poetry==2.2.1
+          else
+            pip install poetry==2.4.2
+          fi
       - name: Install dependencies
         run: |
           poetry install --with dev -E spark -E aws
