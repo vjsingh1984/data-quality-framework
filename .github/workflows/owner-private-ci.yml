@@ -19,8 +19,8 @@ env:
   OWNER_GITHUB_USER_ID: "5168752"
 
 jobs:
-  owner-lint:
-    name: Owner lint
+  authorize-owner:
+    name: Authorize owner private CI
     environment: owner-private-ci
     if: >-
       vars.OWNER_PRIVATE_CI_ENABLED == 'true' &&
@@ -28,6 +28,23 @@ jobs:
       github.event.pull_request.user.id == 5168752 &&
       github.actor_id == '5168752' &&
       github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify immutable owner and same-repository head
+        env:
+          ACTOR_ID: ${{ github.actor_id }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_AUTHOR_ID: ${{ github.event.pull_request.user.id }}
+        run: |
+          set -euo pipefail
+          test "${ACTOR_ID}" = "${OWNER_GITHUB_USER_ID}"
+          test "${PR_AUTHOR_ID}" = "${OWNER_GITHUB_USER_ID}"
+          test "${HEAD_REPOSITORY}" = "${GITHUB_REPOSITORY}"
+
+  owner-lint:
+    name: Owner lint
+    needs: authorize-owner
     runs-on: [self-hosted, Linux, X64, public-overflow]
     timeout-minutes: 20
     steps:
@@ -75,13 +92,7 @@ jobs:
 
   owner-test:
     name: Owner test (Python ${{ matrix.python-version }})
-    environment: owner-private-ci
-    if: >-
-      vars.OWNER_PRIVATE_CI_ENABLED == 'true' &&
-      github.event.pull_request.draft == false &&
-      github.event.pull_request.user.id == 5168752 &&
-      github.actor_id == '5168752' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+    needs: authorize-owner
     runs-on: [self-hosted, Linux, X64, public-overflow]
     timeout-minutes: 30
     strategy:
@@ -150,11 +161,21 @@ jobs:
   owner-build:
     # Match the hosted aggregate context required by branch protection.
     name: build
-    environment: owner-private-ci
-    needs: [owner-lint, owner-test]
+    needs: [authorize-owner, owner-lint, owner-test]
     runs-on: [self-hosted, Linux, X64, public-overflow]
     timeout-minutes: 20
     steps:
+      - name: Verify trusted PR identity
+        env:
+          ACTOR_ID: ${{ github.actor_id }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_AUTHOR_ID: ${{ github.event.pull_request.user.id }}
+        run: |
+          set -euo pipefail
+          test "${ACTOR_ID}" = "${OWNER_GITHUB_USER_ID}"
+          test "${PR_AUTHOR_ID}" = "${OWNER_GITHUB_USER_ID}"
+          test "${HEAD_REPOSITORY}" = "${GITHUB_REPOSITORY}"
+
       - name: Check out the exact trusted PR revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
