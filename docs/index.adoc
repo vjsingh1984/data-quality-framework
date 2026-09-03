@@ -669,6 +669,8 @@ dqframework {
 * **Data Privacy**: Ensure validation doesn't expose sensitive data
 * **Audit Logging**: Maintain comprehensive audit trails
 * **Encryption**: Use encryption for data in transit and at rest
+* **Databricks Authentication**: See link:databricks-authentication.adoc[OAuth,
+  workload identity federation, and the tested runtime boundary]
 
 == Troubleshooting Guide
 

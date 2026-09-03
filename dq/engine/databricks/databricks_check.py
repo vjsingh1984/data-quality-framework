@@ -3,6 +3,7 @@
 
 import logging
 from datetime import datetime
+from urllib.parse import urlsplit
 
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.jobs import RunType, RunResultState
@@ -20,9 +21,57 @@ class DatabricksCheck:
     and compare actual vs expected invocations.
     """
 
-    def __init__(self, databricks_token, databricks_url):
-        self._databricks_token = databricks_token
-        self._databricks_url = databricks_url
+    def __init__(
+        self, databricks_token=None, databricks_url=None, workspace_client=None
+    ):
+        """Create a job monitor using Databricks unified authentication.
+
+        ``databricks_token`` remains available for backwards compatibility, but
+        production automation should omit it and let ``WorkspaceClient`` use
+        OAuth, workload identity federation, or another unified-auth provider.
+        A client can be injected for tests without supplying credentials.
+        """
+        if workspace_client is not None:
+            if databricks_token is not None or databricks_url is not None:
+                raise ValueError(
+                    "workspace_client cannot be combined with explicit credentials"
+                )
+            self._workspace_client = workspace_client
+            return
+
+        options = {}
+        if databricks_url is not None:
+            options["host"] = self._validate_workspace_url(databricks_url)
+        if databricks_token is not None:
+            options["token"] = self._validate_token(databricks_token)
+        self._workspace_client = WorkspaceClient(**options)
+
+    @staticmethod
+    def _validate_workspace_url(value):
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("Databricks workspace URL must not be blank")
+        parsed = urlsplit(value.strip())
+        if (
+            parsed.scheme.lower() != "https"
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("Databricks workspace URL must be an HTTPS origin")
+        path = parsed.path.rstrip("/")
+        if path:
+            raise ValueError("Databricks workspace URL must not contain a path")
+        return value.strip().rstrip("/")
+
+    @staticmethod
+    def _validate_token(value):
+        if not isinstance(value, str) or not value or any(ch.isspace() for ch in value):
+            raise ValueError(
+                "Databricks token must be nonblank and contain no whitespace"
+            )
+        return value
 
     def check_scheduled_jobs_timeliness(
         self, spark, domain, jobs_to_monitor, job_created_by, last_run
@@ -42,7 +91,7 @@ class DatabricksCheck:
         last_run_epoch = last_run / 1000
         dt_object = datetime.fromtimestamp(last_run_epoch)
 
-        w = WorkspaceClient(host=self._databricks_url, token=self._databricks_token)
+        w = self._workspace_client
 
         _timelines_metrics = []
 
@@ -55,18 +104,26 @@ class DatabricksCheck:
             for domain_job_def in jobs_itertor:
                 if domain_job_def.creator_user_name == job_created_by:
                     job_id = domain_job_def.job_id
+                    schedule = getattr(domain_job_def.settings, "schedule", None)
+                    cron_expression = getattr(schedule, "quartz_cron_expression", None)
+                    if not cron_expression:
+                        logger.warning(
+                            "Skipping unscheduled Databricks job: %s",
+                            domain_job_name,
+                        )
+                        continue
                     logger.info(
                         "Job name: %s, schedule: %s",
                         domain_job_name,
-                        domain_job_def.settings.schedule.quartz_cron_expression,
+                        cron_expression,
                     )
                     cron_obj = QuartzCron(
-                        schedule_string=domain_job_def.settings.schedule.quartz_cron_expression,
+                        schedule_string=cron_expression,
                         start_date=dt_object,
                         end_date=end_date,
                     )
-                    iter = cron_obj.next_triggers(100, isoformat=True)
-                    expected_runs = len(list(iter))
+                    triggers = cron_obj.next_triggers(100, isoformat=True)
+                    expected_runs = len(list(triggers))
 
                     run_list = w.jobs.list_runs(
                         job_id=job_id,
@@ -84,7 +141,10 @@ class DatabricksCheck:
                             ]
                         )
                         _value = 0
-                        if RunResultState.SUCCESS == run.state.result_state:
+                        result_state = getattr(
+                            getattr(run, "state", None), "result_state", None
+                        )
+                        if RunResultState.SUCCESS == result_state:
                             _value = 1
                         _timelines_metrics.append(
                             [
@@ -101,7 +161,7 @@ class DatabricksCheck:
                             run.run_duration,
                             run.execution_duration,
                             run.run_id,
-                            RunResultState.SUCCESS == run.state.result_state,
+                            RunResultState.SUCCESS == result_state,
                         )
                     if expected_runs > actual_runs:
                         _timelines_metrics.append(
@@ -109,7 +169,7 @@ class DatabricksCheck:
                                 domain_job_name,
                                 f"Job id: {job_id}, expected to run {expected_runs} but actual run was {actual_runs}",
                                 "Timeliness.MissedInvocations",
-                                (actual_runs - expected_runs),
+                                (expected_runs - actual_runs),
                             ]
                         )
 
