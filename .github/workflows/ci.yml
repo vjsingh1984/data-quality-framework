@@ -55,7 +55,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        include:
+          # databricks-sdk requires Python >=3.10, so its guarded module tests
+          # are intentionally absent from the supported Python 3.9 lane.
+          - python-version: "3.9"
+            coverage_min: "49"
+          - python-version: "3.10"
+            coverage_min: "55"
+          - python-version: "3.11"
+            coverage_min: "55"
+          - python-version: "3.12"
+            coverage_min: "55"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -92,7 +102,8 @@ jobs:
         run: >-
           poetry run pytest dq/tests/ -v --tb=short
           --cov=dq --cov-branch --cov-report=term-missing
-          --cov-report=xml --cov-report=json:coverage.json --cov-fail-under=55
+          --cov-report=xml --cov-report=json:coverage.json
+          --cov-fail-under=${{ matrix.coverage_min }}
         env:
           SPARK_VERSION: "3.5"
       - name: Enforce independent line and branch floors
