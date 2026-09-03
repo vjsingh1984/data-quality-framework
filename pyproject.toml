@@ -5,9 +5,9 @@ description = "A flexible data quality framework with engine extensibility using
 authors = ["Data Quality Framework Contributors"]
 license = "Apache-2.0"
 readme = "README.md"
-homepage = "https://github.com/vjsingh1984/data-quality-framework"
-repository = "https://github.com/vjsingh1984/data-quality-framework"
-documentation = "https://github.com/vjsingh1984/data-quality-framework#documentation"
+homepage = "https://github.com/anvai-labs/data-quality-framework"
+repository = "https://github.com/anvai-labs/data-quality-framework"
+documentation = "https://github.com/anvai-labs/data-quality-framework#documentation"
 keywords = ["data-quality", "spark", "deequ", "great-expectations", "data-validation"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -44,12 +44,14 @@ pyspark = {version = "3.5.9", optional = true}
 pydeequ = {version = "1.6.0", optional = true}
 boto3 = {version = "^1.26.0", optional = true}
 cron-schedule-triggers = {version = "^0.0.11", optional = true}
+databricks-sdk = {version = "^0.123.0", optional = true, python = ">=3.10"}
 
 [tool.poetry.extras]
 spark = ["pyspark"]
 deequ = ["pydeequ"]
 aws = ["boto3"]
 cron = ["cron-schedule-triggers"]
+databricks = ["databricks-sdk", "cron-schedule-triggers"]
 
 # Minimal development dependencies (only for CI)
 [tool.poetry.group.dev.dependencies]
@@ -62,6 +64,7 @@ black = {version = "26.3.1", python = ">=3.10"}  # Formatting (lint runs on 3.11
 flake8 = "^6.0.0"               # Linting only
 bandit = "^1.7.5"               # Security scanning only
 pip-audit = "^2.9.0"            # Dependency vulnerability gate
+diff-cover = {version = "10.5.1", python = ">=3.10"}
 
 [tool.poetry.scripts]
 dq-framework = "dq.cli:main"
@@ -117,7 +120,7 @@ omit = [
 parallel = true                 # Parallel coverage collection
 
 [tool.coverage.report]
-fail_under = 45
+fail_under = 55
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
