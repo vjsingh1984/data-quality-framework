@@ -100,10 +100,6 @@ jobs:
       max-parallel: 2
       matrix:
         include:
-          # databricks-sdk requires Python >=3.10, so its guarded module tests
-          # are intentionally absent from the supported Python 3.9 lane.
-          - python-version: "3.9"
-            coverage_min: "49"
           - python-version: "3.10"
             coverage_min: "55"
           - python-version: "3.11"
@@ -140,12 +136,7 @@ jobs:
           java-version: "11"
 
       - name: Install Poetry
-        run: |
-          if [ "${{ matrix.python-version }}" = "3.9" ]; then
-            pip install poetry==2.2.1
-          else
-            pip install poetry==2.4.2
-          fi
+        run: pip install poetry==2.4.2
 
       - name: Install dependencies
         run: |
