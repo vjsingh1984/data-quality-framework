@@ -1,4 +1,4 @@
-= Data Quality Framework - Improvements & Roadmap
+= Data Quality Framework - Improvements & Roadmap (planning record)
 :doctype: book
 :toc: left
 :toclevels: 3
@@ -6,6 +6,10 @@
 :sectnums:
 :icons: font
 :source-highlighter: coderay
+
+NOTE: This index links historical proposals. It is not a release plan, implementation-status
+dashboard, or statement of current security/performance behavior. See `index.adoc` for the current
+contract.
 
 == Overview
 

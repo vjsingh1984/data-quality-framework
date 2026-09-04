@@ -1,4 +1,4 @@
-= Performance Optimization Guide
+= Performance Optimization Guide (planning record)
 :doctype: article
 :toc: left
 :toclevels: 3
@@ -6,6 +6,10 @@
 :sectnums:
 :icons: font
 :source-highlighter: coderay
+
+NOTE: Techniques and performance figures in this document are proposals or illustrative targets;
+they are not benchmark results or current guarantees. Use reproducible benchmarks before making
+capacity or latency commitments.
 
 == Executive Summary
 

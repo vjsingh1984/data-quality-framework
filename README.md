@@ -15,24 +15,18 @@ A flexible, configuration-driven data quality framework for Apache Spark with pl
 ## Installation
 
 ```bash
-# Core package (minimal dependencies)
-pip install data-quality-framework
-
-# With Spark support
-pip install data-quality-framework[spark]
-
-# With Deequ support (requires Spark)
+# The framework orchestrator and built-in schema/custom engines require Spark and PyDeequ.
 pip install data-quality-framework[spark,deequ]
 
-# All optional dependencies
-pip install data-quality-framework[spark,deequ,aws]
+# Add the catalog/auth integrations you use.
+pip install data-quality-framework[spark,deequ,aws,databricks]
 ```
 
 ### From Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/vjsingh1984/data-quality-framework.git
+git clone https://github.com/anvai-labs/data-quality-framework.git
 cd data-quality-framework
 
 # Install with Poetry
@@ -172,9 +166,12 @@ Place your engine in `dq/engine/mycustom/mycustom_engine.py` and reference it in
 
 ## Requirements
 
-- Python 3.9+
-- Apache Spark 3.5+ (for Spark-based engines)
+- Python 3.10 through 3.12 (the tested source and CI matrix)
+- Apache Spark 3.5.9
 - Deequ JAR file (for Deequ engine): `lib/deequ-2.0.8-spark-3.5.jar`
+
+PyDeequ 1.6.0 currently maps Spark versions only through Spark 3.5. The repository does not
+claim Spark 4 or Databricks Runtime 18 compatibility yet; see the runtime boundary below.
 
 ## Development
 
@@ -195,10 +192,16 @@ bandit -r dq/ -x tests
 
 ## Documentation
 
-- [Configuration Reference](docs/configuration.md)
-- [Engine Documentation](docs/engines/)
-- [API Reference](docs/api-reference.md)
+- [Current architecture, configuration, and API reference](docs/index.adoc)
+- [Databricks authentication and runtime boundary](docs/databricks-authentication.adoc)
 - [Examples](examples/)
+
+The remaining documents under `docs/` are explicitly labeled planning records. They describe
+possible future work and are not statements about implemented behavior.
+
+CI runs the Spark-backed suite on Python 3.10, 3.11, and 3.12; enforces independent 55% line and
+branch floors plus changed-code coverage; audits dependencies; builds the package; and rejects
+broken documentation links.
 
 ## Contributing
 

@@ -178,6 +178,22 @@ jobs:
     runs-on: [self-hosted, Linux, X64, public-overflow]
     timeout-minutes: 10
     steps:
+      - name: Check out the exact trusted PR revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          clean: true
+      - name: Check documentation links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: >-
+            --root-dir . --max-retries 3 --timeout 30
+            --exclude '^file:///(absolute/path|path/to)/'
+            './**/*.md' './**/*.adoc'
+          fail: true
+          failIfEmpty: false
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Review dependency changes
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
