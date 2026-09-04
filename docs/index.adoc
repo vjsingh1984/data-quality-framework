@@ -1,765 +1,226 @@
-= Data Quality Framework
-:doctype: book
+= Data Quality Framework reference
 :toc: left
 :toclevels: 3
 :sectlinks:
-:sectnums:
-:icons: font
-:source-highlighter: coderay
 :imagesdir: png
 
-== Executive Summary
+This document describes behavior implemented on the current default branch. Documents named
+`technical-debt-analysis`, `architecture-improvements`, `performance-optimization`,
+`future-enhancements`, and `improvements-index` are planning records, not current guarantees.
 
-The Data Quality Framework is a comprehensive, extensible Python library designed for enterprise-scale data quality validation in Apache Spark environments. Built with a plugin-based architecture, it supports multiple validation engines including Amazon Deequ, Great Expectations, schema validation, and custom business logic constraints.
+== Supported runtime
 
-=== Key Features
+The tested source matrix is Python 3.10, 3.11, and 3.12 with PySpark 3.5.9, PyDeequ 1.6.0,
+and the Deequ `2.0.8-spark-3.5` JAR. PyDeequ 1.6.0 does not map Spark 4.x artifacts, so this
+repository does not claim Spark 4 or Databricks Runtime 18 compatibility.
 
-* **Multi-Engine Support**: Seamlessly integrate Deequ, Great Expectations, schema validation, and custom engines
-* **Configuration-Driven**: HOCON-based configuration with support for file, S3, ADLS, and HTTP sources
-* **Spark Native**: Built for Apache Spark with distributed processing capabilities
-* **Extensible Architecture**: Plugin-based design for easy addition of new validation engines
-* **Enterprise Ready**: Comprehensive error handling, monitoring, and repository management
+Install the framework path used by the orchestrator and built-in engines:
 
-=== Business Value
+[source,shell]
+----
+pip install 'data-quality-framework[spark,deequ]'
+----
 
-* **Improved Data Quality**: Automated detection and prevention of data quality issues
-* **Reduced Risk**: Early identification of data anomalies before they impact downstream systems
-* **Operational Efficiency**: Automated validation pipelines reduce manual quality checks
-* **Compliance**: Structured validation framework supports regulatory requirements
-* **Scalability**: Distributed processing handles enterprise-scale datasets
+Add `aws` for Glue/S3 support and `databricks` for the Databricks SDK integration. The Great
+Expectations adapter imports `great_expectations` at runtime, but the project does not pin that
+third-party package because the adapter uses its legacy `SparkDFDataset` API. Install and test a
+compatible version explicitly before selecting that engine.
 
-== Architecture Overview
+== Architecture
 
-image::framework-overview.png[Framework Architecture, align="center"]
+image::framework-overview.png[Framework components]
 
-The Data Quality Framework follows a layered architecture pattern:
+The implemented execution path is:
 
-=== Configuration Layer
-The framework supports multiple configuration sources through a unified interface:
+. `DQFramework` parses a HOCON string or supported URI.
+. `CatalogFactory` selects the Spark, Hive, Unity/Delta, or Glue catalog provider.
+. Configured DataFrames are resolved before rule execution; an optional default DataFrame can be
+  supplied directly.
+. `EngineLoader` accepts a lowercase alphanumeric/underscore engine name and imports
+  `dq.engine.<name>.<name>_engine`.
+. Each engine returns metric dictionaries. `DQFramework.run()` adds the execution timestamp and
+  Spark application ID.
+. When a rule supplies repository configuration, supporting engines can append metric and
+  verification DataFrames to file paths or catalog tables.
 
-* **File System**: Local and network file system configurations
-* **Cloud Storage**: S3, ADLS Gen2, and other distributed storage systems
-* **HTTP Sources**: REST API endpoints for dynamic configuration
-* **Inline Configuration**: Programmatic configuration using HOCON format
-
-=== Core Framework Layer
-The core orchestration layer manages the entire data quality workflow:
-
-* **DQFramework**: Main orchestrator that coordinates all components
-* **Engine Loader**: Dynamic loading system using Python reflection
-* **DataFrame Manager**: Spark catalog integration and data source management
-
-=== Engine Ecosystem
-Multiple validation engines provide specialized capabilities:
-
-* **Deequ Engine**: Amazon's Deequ library for statistical data profiling
-* **Great Expectations Engine**: Statistical validation and expectation management
-* **Schema Validation Engine**: Data type and structural validation
-* **Custom Engine**: Business-specific validation logic and constraints
-
-== Data Flow and Processing
-
-image::data-flow.png[Data Flow Diagram, align="center"]
-
-The framework processes data quality rules through a well-defined sequence:
-
-. **Configuration Loading**: Parse and validate configuration from various sources
-. **DataFrame Registration**: Load and register target DataFrames from Spark catalog
-. **Engine Instantiation**: Dynamically load and configure validation engines
-. **Rule Execution**: Execute validation rules against target data
-. **Result Aggregation**: Collect and standardize validation results
-. **Repository Storage**: Persist metrics and verification results for historical tracking
-
-== Engine Architecture
-
-image::engine-architecture.png[Engine Architecture, align="center"]
-
-=== Base Engine Interface
-
-All validation engines implement the `DQEngine` abstract base class:
+The public base contract is:
 
 [source,python]
 ----
-class DQEngine:
-    def __init__(self, config: ConfigTree, dqts: int = None):
-        self._config = config
-        self._dqts = dqts
-    
-    def apply(self, dataframe: DataFrame, repository=None) -> List[Dict]:
-        """Abstract method for executing validation logic"""
-        pass
+class DQEngine(ABC):
+    @abstractmethod
+    def apply(self, dataframe: DataFrame, repository=None) -> list[dict]:
+        ...
 ----
 
-=== Engine-Specific Implementations
+== Configuration loading
 
-==== Deequ Engine
-Integrates with Amazon's Deequ library for statistical data quality checks:
+`DQFramework(spark, config, default_dataframe=None)` accepts:
 
-* **Completeness Checks**: Detect null values and missing data
-* **Uniqueness Validation**: Identify duplicate records and constraint violations
-* **Compliance Rules**: Custom SQL-based validation logic
-* **Statistical Profiling**: Distribution analysis and outlier detection
+* an inline HOCON string;
+* `file://` for a local HOCON file;
+* `s3://` when the AWS extra and credentials are available;
+* `abfss://` in a Spark environment configured for ADLS Gen2; or
+* `http://` or `https://` (the HTTP helper applies a request timeout).
 
-==== Custom Engine  
-Implements business-specific validation logic:
+Unknown URI schemes raise `ConfigurationError`. `dq-validate` fully parses local and `file://`
+configuration; for remote schemes it currently emits a warning and does not fetch the document.
 
-* **Rate of Change Analysis**: Time series anomaly detection
-* **Distinctness by Group**: Cardinality validation within data segments
-* **Lookup Validation**: Reference data integrity checks
-* **Negative Value Detection**: Financial and logical consistency validation
-
-==== Schema Validation Engine
-Provides structural and type validation:
-
-* **Data Type Validation**: Enforce column type constraints
-* **Foreign Key Constraints**: Referential integrity validation
-* **Not Null Constraints**: Mandatory field validation
-* **Unique Constraints**: Primary and composite key validation
-
-== Configuration Management
-
-image::configuration-structure.png[Configuration Structure, align="center"]
-
-=== Configuration Format
-
-The framework uses HOCON (Human-Optimized Config Object Notation) for configuration:
+A minimal Deequ configuration is:
 
 [source,hocon]
 ----
 dqframework {
-  dataframes {
-    customer_data = "bronze.customer_table"
-    transaction_data = "bronze.transaction_table"
-  }
-  
   dqrules = [
     {
-      name = "customer_data_quality"
+      name = "completeness_checks"
       engine = "deequ"
-      dataframes = ["customer_data"]
+      dataframes = ["default"]
       checks = [
         {
-          constraint_name = "customer_id_completeness"
-          constraint = "hasCompleteness"
-          columns = ["customer_id"]
-          min = 0.95
+          constraint_name = "id_complete"
+          constraint = "isComplete"
+          column = "id"
           level = "Error"
         }
       ]
     }
   ]
-  
-  repository {
-    type = "spark_catalog"
-    database = "data_quality"
-    metrics_table = "dq_metrics"
-    verifications_table = "dq_verifications"
-  }
 }
 ----
 
-=== Multi-Source Configuration
+Pass the DataFrame as `default_dataframe`, or declare table-backed frames:
 
-The framework supports loading configuration from multiple sources:
-
-==== File System
-[source,python]
+[source,hocon]
 ----
-config_path = "file:///path/to/config.conf"
-dq_framework = DQFramework(spark, config_path, dataframe)
-----
-
-==== S3 Storage
-[source,python]
-----
-config_path = "s3://bucket/path/config.conf"
-dq_framework = DQFramework(spark, config_path, dataframe)
-----
-
-==== Inline Configuration
-[source,python]
-----
-config_string = """
 dqframework {
-  dqrules = [...]
-}
-"""
-dq_framework = DQFramework(spark, config_string, dataframe)
-----
-
-== Constraint Types and Capabilities
-
-image::constraint-types.png[Constraint Types, align="center"]
-
-=== Deequ Constraints
-
-==== Completeness Validation
-Detects missing or null values in critical columns:
-
-[source,hocon]
-----
-{
-  constraint_name = "email_completeness"
-  constraint = "hasCompleteness"
-  columns = ["email"]
-  min = 0.98
-  level = "Error"
+  catalog_type = "unity"
+  dataframes {
+    orders = "main.sales.orders"
+    customers {
+      catalog = "main"
+      database = "sales"
+      table = "customers"
+    }
+  }
+  dqrules = []
 }
 ----
 
-==== Uniqueness Validation
-Ensures unique values in key columns:
+Table identifiers are limited to one-, two-, or three-part alphanumeric/underscore identifiers;
+arbitrary SQL expressions are not accepted as table names.
 
-[source,hocon]
-----
-{
-  constraint_name = "customer_id_uniqueness"
-  constraint = "hasUniqueness"
-  columns = ["customer_id"]
-  min = 1.0
-  level = "Error"
-}
-----
+== Catalog providers
 
-==== Compliance Rules
-Custom SQL-based validation logic:
+`catalog_type` supports:
 
-[source,hocon]
-----
-{
-  constraint_name = "email_format_compliance"
-  constraint = "satisfies"
-  expression = "email RLIKE '^[A-Za-z0-9+_.-]+@(.+)$'"
-  min = 0.95
-  level = "Warning"
-}
-----
+* `spark` (default fallback) and `hive`, both through Spark's catalog;
+* `unity` and `delta`, through the Unity Catalog provider; and
+* `glue`, through the AWS Glue provider.
 
-=== Custom Constraints
+When `catalog_type` is omitted, the factory checks Spark configuration for Unity/Delta or Glue
+markers and otherwise selects `spark`. Catalog permissions and cloud credentials are supplied by
+the runtime; the framework does not embed them.
 
-image::custom-constraints.png[Custom Constraints, align="center"]
+== Engines
 
-==== Rate of Change Analysis
-Monitors time series data for anomalous changes:
+=== Deequ
 
-[source,hocon]
-----
-{
-  constraint_name = "price_rate_of_change"
-  constraint = "RateOfChange"
-  columns = ["price", "volume"]
-  group_by = ["symbol", "exchange"]
-  sort_by = "trade_date"
-  max = 20.0
-  level = "Warning"
-}
-----
-
-==== Distinctness by Group
-Validates cardinality within data segments:
-
-[source,hocon]
-----
-{
-  constraint_name = "product_distinctness"
-  constraint = "DistinctnessByGroup"
-  columns = ["product_id"]
-  group_by = ["category", "brand"]
-  min = 5
-  level = "Error"
-}
-----
-
-==== Lookup Validation
-Ensures column names exist in reference tables:
-
-[source,hocon]
-----
-{
-  constraint_name = "factor_lookup_validation"
-  constraint = "LookupBasedOnColumnNameList"
-  ignore_columns = ["date", "source"]
-  ref_table = "master.factor_list"
-  ref_columns = "factor_id"
-  level = "Warning"
-}
-----
-
-== Spark Integration
-
-image::spark-integration.png[Spark Integration, align="center"]
-
-=== Spark Session Management
-
-The framework integrates seamlessly with existing Spark sessions:
+The `deequ` engine maps supported HOCON constraints to PyDeequ checks and requires the matching
+Deequ JAR on the Spark classpath. The checked-in local example uses:
 
 [source,python]
 ----
-from pyspark.sql import SparkSession
-from dq.dq_framework import DQFramework
-
-# Initialize Spark with Deequ JAR
-spark = SparkSession.builder \
-    .appName("DataQualityFramework") \
-    .config("spark.jars", "lib/deequ-2.0.7-spark-3.5.jar") \
+SparkSession.builder \
+    .config("spark.jars", "lib/deequ-2.0.8-spark-3.5.jar") \
     .getOrCreate()
-
-# Initialize DQ Framework
-dq_framework = DQFramework(spark, config_path, dataframe)
 ----
 
-=== DataFrame Integration
+=== Schema validation
 
-The framework supports multiple DataFrame sources:
+The `schemavalidation` engine uses Deequ plus Spark schema inspection for datatype, nullable,
+unique, and foreign-key checks. See `examples/schema_validation.conf`.
 
-* **Spark Catalog Tables**: Direct integration with Hive metastore
-* **File System**: Parquet, Delta, CSV, and other formats
-* **Streaming DataFrames**: Real-time data quality validation
-* **JDBC Sources**: Database connectivity for reference data
+=== Custom constraints
 
-=== Performance Optimization
+The `custom` engine currently implements `DistinctnessByGroup`, `RateOfChange`,
+`LookupBasedOnColumnNameList`, and `WideTablesNegativeValuesCheck`. See
+`examples/custom_constraints.conf`.
 
-* **Lazy Evaluation**: Leverage Spark's lazy evaluation for efficiency
-* **Catalyst Optimizer**: Automatic query optimization
-* **Columnar Storage**: Optimized for Parquet and Delta formats
-* **Broadcast Joins**: Efficient reference data lookups
+=== Great Expectations adapter
 
-== Repository and Results Management
+The `greatexpectations` engine is an optional compatibility adapter. It requires a separately
+installed Great Expectations release that still exposes `ge.dataset.SparkDFDataset`; current CI
+tests the adapter boundary with a controlled substitute and does not certify a live external
+Great Expectations/Spark combination.
 
-image::repository-system.png[Repository System, align="center"]
+== Results and repositories
 
-=== Metrics Storage
+`DQFramework.run()` returns a list of dictionaries containing at least `check`, `success`,
+`details`, `ts`, and `jobid` for results emitted by an engine.
 
-The framework generates two types of results:
+Repository configuration is optional. The current helper requires `dataset`, accepts formats
+`parquet`, `csv`, `json`, `delta`, or `orc`, and supports:
 
-==== Metrics DataFrame
-Contains quantitative validation results:
-
-[cols="1,1,3"]
-|===
-|Column |Type |Description
-
-|entity
-|String
-|Target entity or table name
-
-|instance  
-|String
-|Specific constraint instance
-
-|name
-|String
-|Metric or constraint name
-
-|value
-|Double
-|Numeric result (0=fail, 1=pass, or metric value)
-|===
-
-==== Verification DataFrame
-Contains detailed validation information:
-
-[cols="1,1,3"]
-|===
-|Column |Type |Description
-
-|check
-|String
-|Check identifier
-
-|check_level
-|String
-|Error or Warning level
-
-|check_status
-|String
-|Success or Failure status
-
-|constraint
-|String
-|Constraint type
-
-|constraint_status
-|String
-|Detailed constraint result
-
-|constraint_message
-|String
-|Human-readable result description
-|===
-
-=== Historical Tracking
-
-Results are automatically timestamped and can be stored in various formats:
-
-* **Spark Catalog Tables**: Integration with Hive metastore
-* **Delta Lake**: ACID transactions and time travel capabilities
-* **Parquet Files**: High-performance columnar storage
-* **Database Tables**: JDBC connectivity for traditional databases
-
-== Deployment Patterns
-
-image::deployment-patterns.png[Deployment Patterns, align="center"]
-
-=== Development Environment
-
-==== Local Development
-* **Jupyter Notebooks**: Interactive data exploration and rule development
-* **IDE Integration**: PyCharm, VS Code with Spark extensions
-* **Local Spark**: Single-node testing and debugging
-
-==== Testing Strategy
-* **Unit Tests**: Individual component validation
-* **Integration Tests**: End-to-end workflow validation
-* **Performance Tests**: Scalability and resource utilization
-
-=== Production Deployment
-
-==== Batch Processing
-* **Spark Submit**: Cluster execution with YARN, Mesos, or Kubernetes
-* **Job Scheduling**: Integration with Airflow, Luigi, or cron
-* **Configuration Management**: Externalized rule definitions
-
-==== Streaming Processing
-* **Structured Streaming**: Real-time data quality validation
-* **Kafka Integration**: Event-driven quality checks
-* **Delta Lake**: Streaming storage with ACID guarantees
-
-==== Cloud Platforms
-* **Databricks**: Managed Spark with auto-scaling
-* **AWS EMR**: Elastic MapReduce with S3 integration
-* **Google Dataproc**: Managed Hadoop with BigQuery connectivity
-
-=== Monitoring and Observability
-
-* **Metrics Collection**: Custom metrics for monitoring framework performance
-* **Centralized Logging**: Structured logging with ELK stack or cloud equivalents
-* **Alert Management**: Threshold-based alerting for quality failures
-* **Dashboard Integration**: Visualization with Grafana, Tableau, or cloud dashboards
-
-== Error Handling and Resilience
-
-image::error-handling.png[Error Handling, align="center"]
-
-=== Error Categories
-
-==== Configuration Errors
-* **Syntax Validation**: HOCON format validation
-* **Schema Validation**: Configuration structure verification
-* **Source Accessibility**: Network and permission validation
-
-==== Runtime Errors
-* **Engine Loading**: Dynamic module import error handling
-* **Resource Management**: Memory and cluster connectivity issues
-* **Data Processing**: DataFrame operation error recovery
-
-==== Validation Errors
-* **Constraint Failures**: Rule violation handling
-* **Threshold Breaches**: Metric boundary validation
-* **Logic Exceptions**: Custom constraint error management
-
-=== Recovery Mechanisms
-
-==== Retry Logic
-* **Exponential Backoff**: Progressive delay for transient failures
-* **Circuit Breaker**: Prevent cascade failures
-* **Maximum Attempts**: Bounded retry behavior
-
-==== Graceful Degradation
-* **Partial Results**: Continue processing with available data
-* **Skip Failed Rules**: Isolate failing validations
-* **Fallback Mechanisms**: Alternative validation paths
-
-==== Monitoring Integration
-* **Error Metrics**: Failure rate tracking and alerting
-* **Log Aggregation**: Centralized error reporting
-* **Incident Response**: Automated escalation procedures
-
-== Testing Strategy
-
-image::testing-strategy.png[Testing Strategy, align="center"]
-
-=== Test Infrastructure
-
-==== Pytest Framework
-Comprehensive testing with pytest fixtures and utilities:
-
-[source,python]
-----
-@pytest.fixture
-def spark_session():
-    return SparkSession.builder \
-        .master("local[2]") \
-        .appName("DQFramework-Test") \
-        .config("spark.jars", "lib/deequ-2.0.7-spark-3.5.jar") \
-        .getOrCreate()
-
-@pytest.fixture  
-def sample_dataframe(spark_session):
-    data = [("Alice", 34, "alice@example.com"), 
-            ("Bob", 45, "bob@example.com")]
-    return spark_session.createDataFrame(data, ["name", "age", "email"])
-----
-
-==== Test Data Management
-* **Sample DataFrames**: Realistic test data for various scenarios
-* **Edge Cases**: Null values, empty datasets, type mismatches
-* **Mock Objects**: External service simulation
-
-=== Testing Levels
-
-==== Unit Testing
-* **Framework Core**: Configuration loading, engine management
-* **Individual Engines**: Isolated engine testing
-* **Constraint Logic**: Individual validation rule testing
-
-==== Integration Testing
-* **End-to-End Workflows**: Complete pipeline validation
-* **Repository Integration**: Storage and retrieval testing
-* **External Dependencies**: S3, database, and API integration
-
-==== Performance Testing
-* **Scalability**: Large dataset processing validation
-* **Resource Utilization**: Memory and CPU usage monitoring
-* **Execution Time**: Performance benchmark validation
-
-=== Continuous Integration
-
-* **Automated Testing**: Git hook integration and pull request validation
-* **Coverage Reporting**: Code coverage metrics and quality gates
-* **Deployment Testing**: Staging environment validation
-
-== API Reference
-
-=== DQFramework Class
-
-==== Constructor
-[source,python]
-----
-DQFramework(spark: SparkSession, config: str, default_dataframe: DataFrame = None)
-----
-
-**Parameters:**
-* `spark`: Active Spark session
-* `config`: Configuration string or path (file://, s3://, abfss://, http://, https://)
-* `default_dataframe`: Optional default DataFrame for rules
-
-==== Methods
-
-===== run()
-Executes all configured data quality rules.
-
-**Returns:** `List[Dict]` - Cumulative metrics from all executed rules
-
-[source,python]
-----
-results = dq_framework.run()
-for result in results:
-    print(f"Check: {result['check']}, Success: {result['success']}")
-----
-
-===== get_dataframe(df_name: str)
-Retrieves a DataFrame by name from the configured sources.
-
-**Parameters:**
-* `df_name`: Name of the DataFrame to retrieve
-
-**Returns:** `DataFrame` - Spark DataFrame
-
-=== Engine Loader
-
-==== load_engine()
-Dynamically loads and instantiates validation engines.
-
-[source,python]
-----
-engine = EngineLoader().load_engine("deequ", config, timestamp)
-----
-
-=== Configuration Examples
-
-==== Complete Configuration Example
 [source,hocon]
 ----
-dqframework {
-  dataframes {
-    customer_data = "bronze.customers"
-    transaction_data = "bronze.transactions"  
-    product_data = "bronze.products"
+repository {
+  dataset = "orders"
+  format = "delta"
+  file {
+    paths = ["/quality/results"]
   }
-  
-  dqrules = [
-    {
-      name = "customer_data_quality"
-      engine = "deequ"
-      dataframes = ["customer_data"]
-      checks = [
-        {
-          constraint_name = "customer_id_completeness"
-          constraint = "hasCompleteness"
-          columns = ["customer_id"]
-          min = 0.99
-          level = "Error"
-        },
-        {
-          constraint_name = "email_uniqueness"
-          constraint = "hasUniqueness" 
-          columns = ["email"]
-          min = 1.0
-          level = "Error"
-        },
-        {
-          constraint_name = "email_format"
-          constraint = "satisfies"
-          expression = "email RLIKE '^[A-Za-z0-9+_.-]+@(.+)$'"
-          min = 0.95
-          level = "Warning"
-        }
-      ]
-    },
-    {
-      name = "transaction_monitoring"
-      engine = "custom"
-      dataframes = ["transaction_data"]
-      checks = [
-        {
-          constraint_name = "amount_rate_of_change"
-          constraint = "RateOfChange"
-          columns = ["amount"]
-          group_by = ["account_id", "transaction_type"]
-          sort_by = "transaction_date"
-          max = 50.0
-          level = "Warning"
-        }
-      ]
-    }
-  ]
-  
-  repository {
-    type = "spark_catalog"
-    database = "data_quality"
-    metrics_table = "dq_metrics"
-    verifications_table = "dq_verifications"
+  catalog {
+    tables = ["quality.orders"]
   }
 }
 ----
 
-== Best Practices
+The helper appends partitioned file results and appends to or creates catalog tables with metric
+suffixes. It does not implement retries, alert delivery, retention, or access control; those are
+deployment responsibilities.
 
-=== Configuration Management
-* **Version Control**: Store configurations in Git with proper versioning
-* **Environment Separation**: Use different configurations for dev/staging/prod
-* **Parameterization**: Use variables for environment-specific values
-* **Validation**: Implement configuration schema validation
+== Command-line tools
 
-=== Performance Optimization
-* **Column Pruning**: Select only required columns for validation
-* **Predicate Pushdown**: Apply filters early in the processing pipeline
-* **Cache Management**: Cache frequently accessed DataFrames
-* **Partition Optimization**: Align validation with data partitioning strategy
-
-=== Monitoring and Alerting
-* **SLA Definition**: Establish clear data quality service level agreements
-* **Threshold Tuning**: Regularly review and adjust validation thresholds
-* **Trend Analysis**: Monitor data quality trends over time
-* **Automated Response**: Implement automated remediation for common issues
-
-=== Security Considerations
-* **Access Control**: Implement proper authentication and authorization
-* **Data Privacy**: Ensure validation doesn't expose sensitive data
-* **Audit Logging**: Maintain comprehensive audit trails
-* **Encryption**: Use encryption for data in transit and at rest
-* **Databricks Authentication**: See link:databricks-authentication.adoc[OAuth,
-  workload identity federation, and the tested runtime boundary]
-
-== Troubleshooting Guide
-
-=== Common Issues
-
-==== Configuration Loading Errors
-**Symptom:** `ConfigurationException` during framework initialization
-
-**Solutions:**
-* Verify HOCON syntax using online validators
-* Check file permissions and network accessibility
-* Validate configuration schema against expected structure
-
-==== Engine Loading Failures  
-**Symptom:** `ImportError` or `AttributeError` during engine instantiation
-
-**Solutions:**
-* Verify engine dependencies are installed (pydeequ, great-expectations)
-* Check engine class naming conventions
-* Validate engine configuration parameters
-
-==== Spark Integration Issues
-**Symptom:** JAR dependency errors or Spark context failures
-
-**Solutions:**
-* Ensure Deequ JAR is available in Spark classpath
-* Verify Spark session configuration
-* Check cluster connectivity and resource allocation
-
-==== Performance Problems
-**Symptom:** Slow execution or out-of-memory errors
-
-**Solutions:**
-* Increase Spark driver and executor memory
-* Optimize DataFrame partitioning
-* Implement incremental validation strategies
-
-=== Logging Configuration
-
-Enable detailed logging for troubleshooting:
-
-[source,python]
+[source,shell]
 ----
-import logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger("dq.framework")
+dq-framework file:///absolute/path/config.conf --spark-master 'local[*]'
+dq-validate file:///absolute/path/config.conf --format json
 ----
 
-=== Support and Resources
+`dq-framework` creates a Spark session, runs the configured checks, prints a summary, and returns
+nonzero when checks fail. `dq-validate` validates required local configuration structure without
+running Spark checks.
 
-* **Documentation**: Complete API documentation and examples
-* **Community**: Stack Overflow tag `data-quality-framework`
-* **Issue Tracking**: GitHub issues for bug reports and feature requests
-* **Training**: Workshop materials and video tutorials
+== Security boundaries
 
-== Improvement & Enhancement Documentation
+* Do not place cloud credentials, Databricks tokens, or storage secrets in HOCON files.
+* Use runtime-native identity, secret managers, and least-privilege catalog/storage grants.
+* Only HTTPS should be used for remote configuration in production.
+* Table names are validated, but configuration content remains trusted operational input.
+* Databricks automation should use OAuth machine-to-machine or workload identity federation.
 
-=== 🚨 **Critical Issues Analysis**
-link:technical-debt-analysis.html[Technical Debt Analysis] - Comprehensive analysis of security vulnerabilities, performance bottlenecks, and architectural issues requiring immediate attention.
+See link:databricks-authentication.adoc[Databricks authentication and runtime compatibility].
 
-=== 🎯 **Strategic Roadmap**  
-link:future-enhancements.html[Future Enhancements Roadmap] - Three-phase strategic enhancement plan for transforming the framework into a next-generation data quality platform.
+== Tests and CI
 
-=== ⚡ **Performance Optimization**
-link:performance-optimization.html[Performance Optimization Guide] - Detailed strategies for achieving 10-100x performance improvements through distributed processing and intelligent caching.
+CI runs the Spark-backed test suite on Python 3.10, 3.11, and 3.12. It rejects missing tests,
+enforces independent 55% line and branch floors, enforces changed-code coverage, runs Black,
+Flake8, Bandit, and pip-audit, builds the package, reviews dependency changes, and checks
+documentation links. A fail-closed aggregate job is the required branch-protection context.
 
-=== 🏗️ **Architecture Modernization**
-link:architecture-improvements.html[Architecture Improvements] - Complete architectural transformation from monolithic design to layered microkernel architecture.
+The owner path runs only after immutable owner/repository checks and environment approval on
+self-hosted capacity. Other pull requests stay on GitHub-hosted runners.
 
-=== 📋 **Implementation Guide**
-link:improvements-index.html[Improvements Index] - Master implementation guide with priorities, timelines, and success metrics for all enhancement initiatives.
+== Examples and planning records
 
-== Appendices
+* link:../examples/README.md[Runnable configuration examples]
+* link:technical-debt-analysis.adoc[Historical technical-debt analysis]
+* link:architecture-improvements.adoc[Architecture planning record]
+* link:performance-optimization.adoc[Performance ideas]
+* link:future-enhancements.adoc[Future enhancement ideas]
+* link:improvements-index.adoc[Planning index]
 
-=== Appendix A: Configuration Schema
-Complete HOCON configuration schema reference with all supported parameters and validation rules.
-
-=== Appendix B: Engine Development Guide  
-Comprehensive guide for developing custom validation engines, including interface specifications and best practices.
-
-=== Appendix C: Performance Benchmarks
-Performance analysis and benchmarking results across different cluster configurations and dataset sizes.
-
-=== Appendix D: Migration Guide
-Step-by-step migration guide from other data quality frameworks to the Data Quality Framework.
-
----
-
-*Document Version: 3.0*  
-*Last Updated: {localdate}*  
-*Framework Version: 1.0.5*  
-*Enhancement Suite: Complete*
+Planning records can contain illustrative pseudocode, targets, and estimates that are not
+implemented or benchmarked. Use this reference, the source, and the executable CI gates for the
+current contract.

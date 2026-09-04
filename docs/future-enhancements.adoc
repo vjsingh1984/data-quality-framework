@@ -1,4 +1,4 @@
-= Future Enhancements Roadmap
+= Future Enhancements Roadmap (planning record)
 :doctype: article
 :toc: left
 :toclevels: 3
@@ -6,6 +6,9 @@
 :sectnums:
 :icons: font
 :source-highlighter: coderay
+
+NOTE: This document is a backlog of ideas and illustrative designs. Features and code fragments
+below are not supported behavior unless they also exist in the current source and tests.
 
 == Executive Summary
 

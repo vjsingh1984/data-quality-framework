@@ -1,4 +1,4 @@
-= Technical Debt Analysis
+= Technical Debt Analysis (historical planning record)
 :doctype: article
 :toc: left
 :toclevels: 3
@@ -6,6 +6,10 @@
 :sectnums:
 :icons: font
 :source-highlighter: coderay
+
+NOTE: This document captures a point-in-time planning analysis. Its examples, issue list,
+priorities, and estimates are not current implementation claims. Use `index.adoc`, the source,
+and CI results for the current supported contract.
 
 == Executive Summary
 

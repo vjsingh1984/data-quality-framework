@@ -12,14 +12,14 @@ token so the SDK obtains the short-lived credential. The legacy explicit-token
 constructor remains supported for compatibility, passes the token directly to
 the SDK, and does not retain it on the check object.
 
-The optional Databricks integration requires Python 3.10 or newer. The core
-package and Spark 3.5 integration continue to support Python 3.9.
+The package, Spark 3.5 integration, and optional Databricks integration require
+Python 3.10 or newer. CI tests Python 3.10, 3.11, and 3.12.
 
 Official references:
 
-* https://docs.databricks.com/aws/en/dev-tools/auth/oauth-federation-provider[OAuth federation policy]
-* https://docs.databricks.com/aws/en/dev-tools/ci-cd/github[GitHub Actions with workload identity federation]
-* https://docs.databricks.com/aws/en/dev-tools/auth/unified-auth[Databricks unified authentication]
+* OAuth federation policy: https://docs.databricks.com/aws/en/dev-tools/auth/oauth-federation-provider
+* GitHub Actions with workload identity federation: https://docs.databricks.com/aws/en/dev-tools/ci-cd/github
+* Databricks unified authentication: https://docs.databricks.com/aws/en/dev-tools/auth/unified-auth
 
 == Runtime boundary
 
@@ -30,5 +30,5 @@ claim Runtime 18 compatibility. A Spark 4.1 lane should be added only after an
 upstream PyDeequ release maps and tests Spark 4.1; the current boundary is an
 explicit compatibility hold, not an untested upgrade.
 
-* https://docs.databricks.com/aws/en/release-notes/runtime/18[Databricks Runtime 18 LTS]
-* https://github.com/awslabs/python-deequ/blob/v1.6.0/pydeequ/configs.py[PyDeequ 1.6.0 Spark mapping]
+* Databricks Runtime 18 LTS: https://docs.databricks.com/aws/en/release-notes/runtime/18
+* PyDeequ 1.6.0 Spark mapping: https://github.com/awslabs/python-deequ/blob/v1.6.0/pydeequ/configs.py

@@ -1,4 +1,4 @@
-= Architecture Improvements Roadmap
+= Architecture Improvements Roadmap (planning record)
 :doctype: article
 :toc: left
 :toclevels: 3
@@ -6,6 +6,9 @@
 :sectnums:
 :icons: font
 :source-highlighter: coderay
+
+NOTE: This is a proposed architecture, not a description of code already implemented. Use
+`index.adoc`, the source tree, and executable tests for current behavior.
 
 == Executive Summary
 

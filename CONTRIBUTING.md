@@ -53,7 +53,7 @@ Feature requests are welcome! Please provide:
 
 ### Prerequisites
 
-- Python 3.9 or higher
+- Python 3.10, 3.11, or 3.12
 - Poetry (for dependency management)
 - Java 11+ (for Spark/Deequ)
 - Git
@@ -149,8 +149,8 @@ poetry install --with dev -E spark -E deequ -E aws
 
 # Download Deequ JAR for testing
 mkdir -p lib
-curl -L -o lib/deequ-2.0.7-spark-3.5.jar \
-  https://repo1.maven.org/maven2/com/amazon/deequ/deequ/2.0.7-spark-3.5/deequ-2.0.7-spark-3.5.jar
+curl -L -o lib/deequ-2.0.8-spark-3.5.jar \
+  https://repo1.maven.org/maven2/com/amazon/deequ/deequ/2.0.8-spark-3.5/deequ-2.0.8-spark-3.5.jar
 ```
 
 ---
@@ -247,7 +247,7 @@ poetry run pytest dq/tests/ --cov=dq --cov-report=html
 ### Python Style
 
 - Follow [PEP 8](https://pep8.org/)
-- Use [Black](https://black.readthedocs.io/) for code formatting (line length: 88)
+- Use [Black](https://black.readthedocs.io/en/stable/) for code formatting (line length: 88)
 - Use type hints for function signatures
 - Write docstrings for public classes and methods (Google style)
 
