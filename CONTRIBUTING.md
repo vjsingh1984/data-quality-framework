@@ -247,7 +247,7 @@ poetry run pytest dq/tests/ --cov=dq --cov-report=html
 ### Python Style
 
 - Follow [PEP 8](https://pep8.org/)
-- Use [Black](https://black.readthedocs.io/) for code formatting (line length: 88)
+- Use [Black](https://black.readthedocs.io/en/stable/) for code formatting (line length: 88)
 - Use type hints for function signatures
 - Write docstrings for public classes and methods (Google style)
 

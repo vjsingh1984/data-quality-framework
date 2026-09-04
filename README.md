@@ -1,7 +1,7 @@
 # Data Quality Framework
 
 [![Python versions](https://img.shields.io/pypi/pyversions/data-quality-framework.svg)](https://pypi.org/project/data-quality-framework/)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/license/Apache-2.0)
 
 A flexible, configuration-driven data quality framework for Apache Spark with pluggable validation engines.
 
